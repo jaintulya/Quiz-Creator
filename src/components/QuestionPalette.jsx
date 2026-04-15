@@ -6,7 +6,7 @@ export default function QuestionPalette({ total, answers, marked, current, onJum
       <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Question Palette</h3>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-2 mb-3 text-[10px] text-slate-400">
+      <div className="flex flex-wrap gap-3 mb-5 text-[10px] text-slate-400">
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded-sm bg-violet-600 inline-block" /> Answered
         </span>
@@ -22,7 +22,7 @@ export default function QuestionPalette({ total, answers, marked, current, onJum
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-6 gap-1.5">
+      <div className="grid grid-cols-5 gap-2.5">
         {Array.from({ length: total }).map((_, i) => {
           const isAnswered = answers[i] !== undefined && answers[i] !== null;
           const isMarked = marked.includes(i);
