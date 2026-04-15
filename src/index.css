@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 font-sans antialiased;
+    min-height: 100vh;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  /* Glassmorphism card */
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl;
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:shadow-xl hover:-translate-y-1;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-violet-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent;
+  }
+
+  .gradient-text-gold {
+    @apply bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-300 bg-clip-text text-transparent;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm
+           bg-gradient-to-r from-violet-600 to-indigo-600 text-white
+           hover:from-violet-500 hover:to-indigo-500
+           active:scale-95 transition-all duration-200 shadow-lg shadow-violet-900/40
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+  }
+
+  .btn-primary-lg {
+    @apply btn-primary px-7 py-3.5 text-base rounded-2xl;
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm
+           bg-white/10 border border-white/10 text-slate-200
+           hover:bg-white/20 hover:border-white/20
+           active:scale-95 transition-all duration-200;
+  }
+
+  /* Danger button */
+  .btn-danger {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm
+           bg-red-500/20 border border-red-500/30 text-red-400
+           hover:bg-red-500/30 hover:border-red-400/50
+           active:scale-95 transition-all duration-200;
+  }
+
+  /* Success button */
+  .btn-success {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm
+           bg-emerald-500/20 border border-emerald-500/30 text-emerald-400
+           hover:bg-emerald-500/30 hover:border-emerald-400/50
+           active:scale-95 transition-all duration-200;
+  }
+
+  /* Input */
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-slate-100
+           placeholder-slate-500 focus:outline-none focus:border-violet-500/60
+           transition-all duration-200 text-sm;
+  }
+  .input-field:focus {
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .textarea-field {
+    @apply input-field resize-none leading-relaxed;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    @apply h-2 rounded-full bg-white/10 overflow-hidden;
+  }
+
+  .progress-fill {
+    @apply h-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 transition-all duration-500;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.7);
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  backdrop-filter: blur(8px);
+  background: rgba(2, 6, 23, 0.85);
+}
+
+/* Question option states */
+.option-correct {
+  @apply border-emerald-500/60 bg-emerald-500/20 text-emerald-300;
+}
+
+.option-wrong {
+  @apply border-red-500/60 bg-red-500/20 text-red-300;
+}
+
+.option-selected {
+  @apply border-violet-500/60 bg-violet-500/20 text-violet-300;
+}
+
+/* Palette button states */
+.palette-btn-answered {
+  @apply bg-violet-600 text-white border-violet-500;
+}
+
+.palette-btn-marked {
+  @apply bg-amber-500 text-white border-amber-400;
+}
+
+.palette-btn-current {
+  @apply bg-white text-slate-900 border-white;
+}
+
+.palette-btn-unanswered {
+  @apply bg-white/5 text-slate-400 border-white/10;
+}
