@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Copy, Check, Sparkles, ExternalLink, MessageSquare } from 'lucide-react';
+import { X, Copy, Check, Sparkles, MessageSquare } from 'lucide-react';
 import { buildAIPrompt } from '../utils/aiPrompt.js';
 
 export default function AIPromptModal({ onClose }) {
@@ -80,39 +80,17 @@ export default function AIPromptModal({ onClose }) {
         </div>
 
         {/* Footer actions */}
-        <div className="px-5 pb-5 flex flex-wrap gap-3">
+        <div className="px-5 pb-5 flex justify-center">
           <button
             id="copy-prompt-btn"
             onClick={handleCopy}
-            className="btn-primary flex-1 justify-center"
+            className="btn-primary px-10 py-3"
           >
             {copied
               ? <><Check className="w-4 h-4 text-emerald-400" /> Copied!</>
               : <><Copy className="w-4 h-4" /> Copy Prompt</>
             }
           </button>
-
-          <a
-            href="https://gemini.google.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-secondary"
-            title="Open Google Gemini"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Gemini
-          </a>
-
-          <a
-            href="https://chat.openai.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-secondary"
-            title="Open ChatGPT"
-          >
-            <ExternalLink className="w-4 h-4" />
-            ChatGPT
-          </a>
         </div>
       </div>
     </div>
