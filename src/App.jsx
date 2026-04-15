@@ -6,20 +6,14 @@ import QuizPlayer from './pages/QuizPlayer.jsx';
 import ResultPage from './pages/ResultPage.jsx';
 import { seedSampleQuiz } from './utils/sampleQuiz.js';
 
-// Pages: 'list' | 'create' | 'edit' | 'play' | 'result'
-
 export default function App() {
-  const [page, setPage] = useState('list');
-  const [activeQuiz, setActiveQuiz] = useState(null);   // quiz being played/edited
-  const [quizResult, setQuizResult] = useState(null);   // result after finish
-  const [darkMode, setDarkMode] = useState(true);
+  const [page, setPage]           = useState('list');
+  const [activeQuiz, setActiveQuiz] = useState(null);
+  const [quizResult, setQuizResult] = useState(null);
 
-  // Seed sample quiz on first load
   useEffect(() => {
     seedSampleQuiz();
-    // Apply dark mode class
-    document.documentElement.classList.toggle('dark', darkMode);
-  }, [darkMode]);
+  }, []);
 
   const handleNavigate = (target) => {
     setPage(target);
@@ -46,16 +40,12 @@ export default function App() {
   const handleRestart = () => {
     setQuizResult(null);
     setPage('play');
-    // Re-mount player with same quiz by keeping activeQuiz
   };
 
-  const handleToggleDark = () => setDarkMode((d) => !d);
-
-  // Determine if navbar should be shown
   const showNav = page !== 'play';
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'dark bg-slate-950' : 'bg-slate-100'} transition-colors duration-300`}>
+    <div className="min-h-screen bg-slate-950">
       {/* Background gradient blobs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-violet-600/15 rounded-full blur-3xl" />
@@ -68,8 +58,6 @@ export default function App() {
           <Navbar
             currentPage={page === 'edit' ? 'create' : page}
             onNavigate={handleNavigate}
-            darkMode={darkMode}
-            onToggleDark={handleToggleDark}
           />
         )}
 

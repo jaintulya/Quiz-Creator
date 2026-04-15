@@ -1,13 +1,13 @@
-import { Brain, BookOpen, Plus, Moon, Sun } from 'lucide-react';
+import { Brain, BookOpen, Plus } from 'lucide-react';
 
 const NAV_ITEMS = [
   { key: 'create', label: 'Create Quiz', icon: Plus },
   { key: 'list',   label: 'My Quizzes',  icon: BookOpen },
 ];
 
-export default function Navbar({ currentPage, onNavigate, darkMode, onToggleDark }) {
+export default function Navbar({ currentPage, onNavigate }) {
   return (
-    <header className="sticky top-0 z-50 border-b border-white/8 bg-slate-950/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/80 backdrop-blur-xl">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
 
         {/* Logo */}
@@ -30,7 +30,7 @@ export default function Navbar({ currentPage, onNavigate, darkMode, onToggleDark
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200
                 ${currentPage === key
                   ? 'bg-violet-600/25 text-violet-300 border border-violet-500/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/8'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/10'
                 }`}
             >
               <Icon className="w-4 h-4" />
@@ -39,14 +39,6 @@ export default function Navbar({ currentPage, onNavigate, darkMode, onToggleDark
           ))}
         </nav>
 
-        {/* Dark mode toggle */}
-        <button
-          onClick={onToggleDark}
-          className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-all duration-200"
-          title="Toggle dark mode"
-        >
-          {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
       </div>
     </header>
   );
