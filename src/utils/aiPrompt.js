@@ -1,27 +1,24 @@
 /**
- * Generates the AI conversion prompt with the user's raw questions embedded.
- * @param {string} rawQuestions - The raw pasted questions
- * @returns {string} - The full prompt to copy into Gemini/ChatGPT
+ * The static AI conversion prompt.
+ * User pastes this into Gemini/ChatGPT along with their questions.
+ * No questions are embedded here — prompt is question-agnostic.
  */
-export function buildAIPrompt(rawQuestions) {
-  return `Convert the following questions into this JSON quiz format:
+export function buildAIPrompt() {
+  return `Convert whatever questions I give you into this exact JSON format. Output strictly JSON only — no extra text, no markdown, no explanation.
 
-FORMAT:
 [
   {
-    "question": "string",
-    "options": ["A", "B", "C", "D"],
-    "correctAnswer": "string",
-    "explanation": "string"
+    "question": "Full question text here",
+    "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+    "correctAnswer": "Exact matching option string",
+    "explanation": "Clear explanation of why this answer is correct"
   }
 ]
 
 Rules:
-- Ensure exactly 4 options per question
+- Exactly 4 options per question
 - Only one correct answer
-- Add clear explanation for each answer
-- Keep output strictly in JSON (no extra text)
-
-Questions:
-${rawQuestions || '[PASTE YOUR QUESTIONS HERE]'}`;
+- "correctAnswer" must exactly match one of the options (copy-paste it)
+- Add a clear and helpful explanation for each answer
+- Output must be valid JSON array only — nothing else`;
 }
