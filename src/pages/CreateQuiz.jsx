@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Wand2, Plus, CheckCircle, AlertCircle, FileJson, Info } from 'lucide-react';
 import AIPromptModal from '../components/AIPromptModal.jsx';
-import { saveQuiz, updateQuiz, validateQuizJSON } from '../utils/storage.js';
+import { saveQuiz, updateQuiz, updateQuizTitle, validateQuizJSON } from '../utils/storage.js';
 
 export default function CreateQuiz({ onNavigate, editQuiz = null }) {
   const [title, setTitle]           = useState(editQuiz ? editQuiz.title : '');
@@ -16,24 +16,36 @@ export default function CreateQuiz({ onNavigate, editQuiz = null }) {
       setError('Please enter a quiz title.');
       return;
     }
-    if (!jsonText.trim()) {
-      setError('Please paste the JSON output from your AI chat into the box below.');
-      return;
-    }
-
-    const result = validateQuizJSON(jsonText);
-    if (!result.valid) {
-      setError(result.error);
-      return;
-    }
 
     setLoading(true);
     setTimeout(() => {
       try {
         if (editQuiz) {
-          updateQuiz(editQuiz.id, title, result.data);
-          setSuccess(`Quiz updated! It now has ${result.data.length} questions.`);
+          if (!jsonText.trim()) {
+            updateQuizTitle(editQuiz.id, title);
+            setSuccess('Quiz title updated!');
+          } else {
+            const result = validateQuizJSON(jsonText);
+            if (!result.valid) {
+              setError(result.error);
+              setLoading(false);
+              return;
+            }
+            updateQuiz(editQuiz.id, title, result.data);
+            setSuccess(`Quiz updated! It now has ${result.data.length} questions.`);
+          }
         } else {
+          if (!jsonText.trim()) {
+            setError('Please paste the JSON output from your AI chat into the box below.');
+            setLoading(false);
+            return;
+          }
+          const result = validateQuizJSON(jsonText);
+          if (!result.valid) {
+            setError(result.error);
+            setLoading(false);
+            return;
+          }
           saveQuiz(title, result.data);
           setSuccess(`Quiz created with ${result.data.length} questions! 🎉`);
         }

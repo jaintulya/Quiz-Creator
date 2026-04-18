@@ -47,6 +47,16 @@ export function deleteQuiz(id) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(quizzes));
 }
 
+// ─── Update only quiz title ─────────────────────────────────────────────────
+export function updateQuizTitle(id, newTitle) {
+  const quizzes = getAllQuizzes();
+  const idx = quizzes.findIndex((q) => q.id === id);
+  if (idx === -1) return null;
+  quizzes[idx] = { ...quizzes[idx], title: newTitle.trim(), updatedAt: new Date().toISOString() };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(quizzes));
+  return quizzes[idx];
+}
+
 // ─── Validate quiz JSON ────────────────────────────────────────────────────────
 export function validateQuizJSON(raw) {
   let parsed;
