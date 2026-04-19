@@ -4,7 +4,7 @@
  * No questions are embedded here — prompt is question-agnostic.
  */
 export function buildAIPrompt() {
-  return `Convert whatever questions I give you into this exact JSON format. Output strictly JSON only — no extra text, no markdown, no explanation.
+  return `Convert whatever questions you give me into this exact JSON format. Output strictly JSON only — no extra text, no markdown, no explanation.
 
 [
   {
