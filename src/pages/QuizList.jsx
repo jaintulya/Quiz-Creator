@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import {
   BookOpen, Play, Trash2, Plus, Search, FileEdit,
-  HelpCircle, Calendar, ChevronRight, Sparkles
+  HelpCircle, Calendar, Sparkles, RefreshCw, X, Code
 } from 'lucide-react';
-import { getAllQuizzes, deleteQuiz } from '../utils/storage.js';
+import { getAllQuizzes, deleteQuiz, updateQuiz } from '../utils/storage.js';
 
 export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz }) {
   const [quizzes, setQuizzes] = useState([]);
   const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [viewJson, setViewJson] = useState(null);
 
   useEffect(() => {
     setQuizzes(getAllQuizzes());
@@ -32,6 +33,23 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz }) {
   const formatDate = (iso) => {
     if (!iso) return '';
     return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const shuffleQuiz = (quizId) => {
+    const quiz = quizzes.find(q => q.id === quizId);
+    if (!quiz) return;
+    quiz.questions.forEach((q) => {
+      const opts = [...q.options].sort(() => Math.random() - 0.5);
+      q.options = opts;
+    });
+    const shuffledQuestions = [...quiz.questions].sort(() => Math.random() - 0.5);
+    quiz.questions = shuffledQuestions;
+    updateQuiz(quiz.id, quiz.title, quiz.questions);
+    setQuizzes(getAllQuizzes());
+    if (viewJson && viewJson.id === quizId) {
+      const updated = getAllQuizzes().find(q => q.id === quizId);
+      setViewJson(updated);
+    }
   };
 
   return (
@@ -147,6 +165,20 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz }) {
                   <FileEdit className="w-3.5 h-3.5" />
                 </button>
                 <button
+                  onClick={() => shuffleQuiz(quiz.id)}
+                  className="btn-secondary py-2 px-3"
+                  title="Shuffle Questions"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setViewJson(quiz)}
+                  className="btn-secondary py-2 px-3"
+                  title="View JSON"
+                >
+                  <Code className="w-3.5 h-3.5" />
+                </button>
+                <button
                   onClick={() => handleDelete(quiz.id)}
                   className={`py-2 px-3 rounded-xl text-sm font-semibold border transition-all duration-200 active:scale-95
                     ${deleteConfirm === quiz.id
@@ -168,6 +200,30 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz }) {
         <div className="glass-card p-10 text-center text-slate-400">
           <Search className="w-8 h-8 mx-auto mb-3 opacity-40" />
           <p>No quizzes match "<span className="text-slate-300">{search}</span>"</p>
+        </div>
+      )}
+
+      {/* JSON Modal */}
+      {viewJson && (
+        <div className="fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4" onClick={() => setViewJson(null)}>
+          <div className="w-full max-w-2xl max-h-[80vh] bg-slate-900 border border-white/10 rounded-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-white/10">
+              <h3 className="text-lg font-semibold text-slate-200">{viewJson.title}</h3>
+              <div className="flex items-center gap-2">
+                <button onClick={() => shuffleQuiz(viewJson.id)} className="btn-secondary py-1.5 px-3 text-xs" title="Shuffle Questions">
+                  <RefreshCw className="w-3.5 h-3.5" /> Shuffle
+                </button>
+                <button onClick={() => setViewJson(null)} className="text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono">
+                {JSON.stringify(viewJson, null, 2)}
+              </pre>
+            </div>
+          </div>
         </div>
       )}
     </div>

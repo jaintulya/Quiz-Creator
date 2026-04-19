@@ -6,8 +6,25 @@ import {
 import QuestionPalette from '../components/QuestionPalette.jsx';
 import Timer from '../components/Timer.jsx';
 
+function shuffleArray(array) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export default function QuizPlayer({ quiz, onFinish, onBack }) {
   const total = quiz.questions.length;
+
+  // Shuffle options on first render
+  const [shuffledQuestions] = useState(() =>
+    quiz.questions.map((q) => ({
+      ...q,
+      shuffledOptions: shuffleArray(q.options),
+    }))
+  );
 
   // State
   const [current, setCurrent] = useState(0);
@@ -17,7 +34,7 @@ export default function QuizPlayer({ quiz, onFinish, onBack }) {
   const [submitted, setSubmitted] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
 
-  const q = quiz.questions[current];
+  const q = shuffledQuestions[current];
   const selectedAnswer = answers[current];
   const isAnswered = selectedAnswer !== undefined && selectedAnswer !== null;
   const isMarked = marked.includes(current);
@@ -54,7 +71,7 @@ export default function QuizPlayer({ quiz, onFinish, onBack }) {
     }
     // Calculate results
     let correct = 0;
-    quiz.questions.forEach((q, i) => {
+    shuffledQuestions.forEach((q, i) => {
       if (answers[i] === q.correctAnswer) correct++;
     });
     onFinish({ answers, correct, total, quiz });
@@ -172,7 +189,7 @@ export default function QuizPlayer({ quiz, onFinish, onBack }) {
 
             {/* Options */}
             <div className="space-y-2.5">
-              {q.options.map((opt, i) => (
+              {q.shuffledOptions.map((opt, i) => (
                 <button
                   key={i}
                   onClick={() => handleSelect(opt)}
