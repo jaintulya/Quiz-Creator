@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   ChevronLeft, ChevronRight, Bookmark, BookmarkX,
-  Flag, LayoutGrid, X, CheckCircle2
+  Flag, LayoutGrid, X, CheckCircle2, HelpCircle
 } from 'lucide-react';
 import QuestionPalette from '../components/QuestionPalette.jsx';
 import Timer from '../components/Timer.jsx';
@@ -33,6 +33,7 @@ export default function QuizPlayer({ quiz, onFinish, onBack }) {
   const [showPalette, setShowPalette] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const q = shuffledQuestions[current];
   const selectedAnswer = answers[current];
@@ -40,17 +41,10 @@ export default function QuizPlayer({ quiz, onFinish, onBack }) {
   const isMarked = marked.includes(current);
 
   // ── Select option ────────────────────────────────────────────────────────────
-  const handleSelect = (option) => {
+  const handleSelect = useCallback((option) => {
     if (submitted) return;
     setAnswers((prev) => ({ ...prev, [current]: option }));
-  };
-
-  // ── Mark for review ──────────────────────────────────────────────────────────
-  const toggleMark = () => {
-    setMarked((prev) =>
-      prev.includes(current) ? prev.filter((i) => i !== current) : [...prev, current]
-    );
-  };
+  }, [submitted, current]);
 
   // ── Navigation ───────────────────────────────────────────────────────────────
   const goTo = useCallback((idx) => {
@@ -59,6 +53,40 @@ export default function QuizPlayer({ quiz, onFinish, onBack }) {
       setShowPalette(false);
     }
   }, [total]);
+
+  // ── Keyboard navigation ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (showHelp || !q) return;
+    const options = q.shuffledOptions;
+    const handleKeyDown = (e) => {
+      const keyPressed = e.key.toLowerCase();
+      if (keyPressed === 'arrowright') {
+        e.preventDefault();
+        goTo(current + 1);
+      } else if (keyPressed === 'arrowleft') {
+        e.preventDefault();
+        goTo(current - 1);
+      } else if (keyPressed === 'a' && options[0]) {
+        e.preventDefault();
+        handleSelect(options[0]);
+      } else if (keyPressed === 'b' && options[1]) {
+        e.preventDefault();
+        handleSelect(options[1]);
+      } else if (keyPressed === 'c' && options[2]) {
+        e.preventDefault();
+        handleSelect(options[2]);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [current, showHelp, q, goTo, handleSelect]);
+
+  // ── Mark for review ──────────────────────────────────────────────────────────
+  const toggleMark = () => {
+    setMarked((prev) =>
+      prev.includes(current) ? prev.filter((i) => i !== current) : [...prev, current]
+    );
+  };
 
   // ── Submit quiz ──────────────────────────────────────────────────────────────
   const handleSubmit = () => {
@@ -136,6 +164,12 @@ export default function QuizPlayer({ quiz, onFinish, onBack }) {
 
             <div className="flex items-center gap-3">
               <Timer totalSeconds={quiz.questions.length * 60} onTimeUp={handleSubmit} />
+              <button
+                onClick={() => setShowHelp((s) => !s)}
+                className="btn-secondary py-1.5 px-3 text-xs"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+              </button>
               <button
                 onClick={() => setShowPalette((s) => !s)}
                 className="btn-secondary py-1.5 px-3 text-xs sm:hidden"
@@ -274,6 +308,46 @@ export default function QuizPlayer({ quiz, onFinish, onBack }) {
               current={current}
               onJump={goTo}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Help Controls Modal */}
+      {showHelp && (
+        <div className="fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowHelp(false)}>
+          <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl p-5 animate-slide-up" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-200">Keyboard Controls</h3>
+              <button onClick={() => setShowHelp(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-sm">Next Question</span>
+                <kbd className="px-2 py-1 rounded bg-white/10 text-xs text-slate-300 font-mono">→</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-sm">Previous Question</span>
+                <kbd className="px-2 py-1 rounded bg-white/10 text-xs text-slate-300 font-mono">←</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-sm">Select Option 1</span>
+                <kbd className="px-2 py-1 rounded bg-white/10 text-xs text-slate-300 font-mono">A</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-sm">Select Option 2</span>
+                <kbd className="px-2 py-1 rounded bg-white/10 text-xs text-slate-300 font-mono">B</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-sm">Select Option 3</span>
+                <kbd className="px-2 py-1 rounded bg-white/10 text-xs text-slate-300 font-mono">C</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-sm">Select Option 4</span>
+                <kbd className="px-2 py-1 rounded bg-white/10 text-xs text-slate-300 font-mono">D</kbd>
+              </div>
+            </div>
           </div>
         </div>
       )}

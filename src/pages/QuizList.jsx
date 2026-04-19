@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import {
   BookOpen, Play, Trash2, Plus, Search, FileEdit,
-  HelpCircle, Calendar, Sparkles, RefreshCw, X, Code
+  HelpCircle, Calendar, Sparkles, RefreshCw, X, Code, AlertTriangle
 } from 'lucide-react';
 import { getAllQuizzes, deleteQuiz, updateQuiz } from '../utils/storage.js';
 
 export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz }) {
   const [quizzes, setQuizzes] = useState([]);
   const [search, setSearch] = useState('');
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [deleteModal, setDeleteModal] = useState(null);
   const [viewJson, setViewJson] = useState(null);
 
   useEffect(() => {
@@ -19,14 +19,11 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz }) {
     q.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleDelete = (id) => {
-    if (deleteConfirm === id) {
-      deleteQuiz(id);
+  const confirmDelete = () => {
+    if (deleteModal) {
+      deleteQuiz(deleteModal.id);
       setQuizzes(getAllQuizzes());
-      setDeleteConfirm(null);
-    } else {
-      setDeleteConfirm(id);
-      setTimeout(() => setDeleteConfirm(null), 3000);
+      setDeleteModal(null);
     }
   };
 
@@ -179,13 +176,9 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz }) {
                   <Code className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={() => handleDelete(quiz.id)}
-                  className={`py-2 px-3 rounded-xl text-sm font-semibold border transition-all duration-200 active:scale-95
-                    ${deleteConfirm === quiz.id
-                      ? 'bg-red-500 border-red-400 text-white'
-                      : 'btn-danger'
-                    }`}
-                  title={deleteConfirm === quiz.id ? 'Click again to confirm delete' : 'Delete quiz'}
+                  onClick={() => setDeleteModal(quiz)}
+                  className="btn-danger py-2 px-3"
+                  title="Delete quiz"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -222,6 +215,34 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz }) {
               <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono">
                 {JSON.stringify(viewJson, null, 2)}
               </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4 animate-fade-in" onClick={() => setDeleteModal(null)}>
+          <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl p-5 animate-slide-up" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-200">Delete Quiz?</h3>
+                <p className="text-sm text-slate-400">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-slate-300 text-sm mb-5">
+              Are you sure you want to delete <span className="text-white font-medium">"{deleteModal.title}"</span>?
+            </p>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setDeleteModal(null)} className="btn-secondary flex-1 justify-center">
+                Cancel
+              </button>
+              <button onClick={confirmDelete} className="btn-danger flex-1 justify-center">
+                Delete
+              </button>
             </div>
           </div>
         </div>
