@@ -75,6 +75,9 @@ export default function QuizPlayer({ quiz, onFinish, onBack }) {
       } else if (keyPressed === 'c' && options[2]) {
         e.preventDefault();
         handleSelect(options[2]);
+      } else if (keyPressed === 'd' && options[3]) {
+        e.preventDefault();
+        handleSelect(options[3]);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
