@@ -59,6 +59,7 @@ export default function QuizPlayer({ quiz, onFinish, onBack }) {
     if (showHelp || !q) return;
     const options = q.shuffledOptions;
     const handleKeyDown = (e) => {
+      if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
       const keyPressed = e.key.toLowerCase();
       if (keyPressed === 'arrowright') {
         e.preventDefault();
@@ -66,23 +67,23 @@ export default function QuizPlayer({ quiz, onFinish, onBack }) {
       } else if (keyPressed === 'arrowleft') {
         e.preventDefault();
         goTo(current - 1);
-      } else if (keyPressed === 'a' && options[0]) {
+      } else if (!isAnswered && keyPressed === 'a' && options[0]) {
         e.preventDefault();
         handleSelect(options[0]);
-      } else if (keyPressed === 'b' && options[1]) {
+      } else if (!isAnswered && keyPressed === 'b' && options[1]) {
         e.preventDefault();
         handleSelect(options[1]);
-      } else if (keyPressed === 'c' && options[2]) {
+      } else if (!isAnswered && keyPressed === 'c' && options[2]) {
         e.preventDefault();
         handleSelect(options[2]);
-      } else if (keyPressed === 'd' && options[3]) {
+      } else if (!isAnswered && keyPressed === 'd' && options[3]) {
         e.preventDefault();
         handleSelect(options[3]);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [current, showHelp, q, goTo, handleSelect]);
+  }, [current, showHelp, q, goTo, handleSelect, isAnswered]);
 
   // ── Mark for review ──────────────────────────────────────────────────────────
   const toggleMark = () => {
@@ -117,14 +118,14 @@ export default function QuizPlayer({ quiz, onFinish, onBack }) {
       return `${base} bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:border-violet-500/40 cursor-pointer`;
     }
 
-    // Answered state
+    // Answered state - unselected options are disabled
     if (opt === q.correctAnswer) {
       return `${base} option-correct cursor-default`;
     }
     if (opt === selectedAnswer && opt !== q.correctAnswer) {
       return `${base} option-wrong cursor-default`;
     }
-    return `${base} bg-white/5 border-white/10 text-slate-500 cursor-default`;
+    return `${base} bg-white/5 border-white/10 text-slate-500 cursor-not-allowed opacity-50`;
   };
 
   const getOptionPrefix = (opt, i) => {
