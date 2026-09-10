@@ -20,9 +20,9 @@ export default function Timer({ totalSeconds, onTimeUp }) {
   const isLow = pct <= 20;
   const isMed = pct <= 50 && pct > 20;
 
-  let colorClasses = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300';
+  let colorClasses = 'bg-caramel-500/10 border-caramel-500/30 text-caramel-300';
   if (isLow) {
-    colorClasses = 'bg-rose-500/15 border-rose-500/40 text-rose-300 animate-pulse shadow-glow-sm';
+    colorClasses = 'bg-rose-500/15 border-rose-500/40 text-rose-300 animate-pulse shadow-rose-glow';
   } else if (isMed) {
     colorClasses = 'bg-amber-500/10 border-amber-500/30 text-amber-300';
   }
@@ -40,4 +40,3 @@ export default function Timer({ totalSeconds, onTimeUp }) {
     </div>
   );
 }
-

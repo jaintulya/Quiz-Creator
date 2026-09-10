@@ -1,218 +1,279 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
-  BookOpen, Play, Trash2, Plus, Search, FileEdit,
-  HelpCircle, Calendar, Sparkles, RefreshCw, X, Code, AlertTriangle
+  BookOpen, Layers, Clock, Flame, Search, ChevronDown,
+  Sparkles, Code, Check, Copy, RefreshCw, X, AlertTriangle, Plus
 } from 'lucide-react';
-import { getAllQuizzes, deleteQuiz, updateQuiz } from '../utils/storage.js';
+import StatCard from '../components/ui/StatCard.jsx';
+import QuizCard from '../components/ui/QuizCard.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
+import { fetchAllQuizzes, deleteQuizRecord, updateExistingQuiz } from '../services/quizService.js';
 
-export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz }) {
+export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAuth }) {
+  const { user } = useAuth();
   const [quizzes, setQuizzes] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('latest');
   const [deleteModal, setDeleteModal] = useState(null);
   const [viewJson, setViewJson] = useState(null);
+  const [copiedJson, setCopiedJson] = useState(false);
+
+  // Load quizzes from Supabase (or local fallback)
+  const loadQuizzes = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchAllQuizzes(user?.id);
+      setQuizzes(data);
+    } catch (err) {
+      console.error('Error fetching quizzes:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setQuizzes(getAllQuizzes());
-  }, []);
+    loadQuizzes();
+  }, [user]);
 
-  const filtered = quizzes.filter((q) =>
-    q.title.toLowerCase().includes(search.toLowerCase())
-  );
+  // Calculations for Stats Bar
+  const totalQuizzesCount = quizzes.length;
+  const totalQuestionsCount = quizzes.reduce((acc, q) => acc + (q.questions?.length || 0), 0);
+  const totalEstTimeMins = Math.max(1, Math.round(totalQuestionsCount * 1));
 
-  const confirmDelete = () => {
+  // Search & Sorting Filter
+  const filteredQuizzes = useMemo(() => {
+    let result = quizzes.filter((q) =>
+      q.title.toLowerCase().includes(search.toLowerCase()) ||
+      (q.description && q.description.toLowerCase().includes(search.toLowerCase()))
+    );
+
+    if (sortBy === 'latest') {
+      result.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    } else if (sortBy === 'questions') {
+      result.sort((a, b) => (b.questions?.length || 0) - (a.questions?.length || 0));
+    } else if (sortBy === 'title') {
+      result.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    return result;
+  }, [quizzes, search, sortBy]);
+
+  // Actions
+  const handleCreateQuiz = () => {
+    if (!user) {
+      if (onOpenAuth) onOpenAuth('Please sign in to create and save quizzes.');
+    } else {
+      onNavigate('create');
+    }
+  };
+
+  const handleShuffle = async (quizId) => {
+    const quiz = quizzes.find((q) => q.id === quizId);
+    if (!quiz) return;
+
+    const shuffledQuestions = [...quiz.questions]
+      .map((q) => ({
+        ...q,
+        options: [...q.options].sort(() => Math.random() - 0.5),
+      }))
+      .sort(() => Math.random() - 0.5);
+
+    await updateExistingQuiz(quiz.id, quiz.title, shuffledQuestions, user?.id);
+    await loadQuizzes();
+
+    if (viewJson && viewJson.id === quizId) {
+      setViewJson({ ...quiz, questions: shuffledQuestions });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
     if (deleteModal) {
-      deleteQuiz(deleteModal.id);
-      setQuizzes(getAllQuizzes());
+      await deleteQuizRecord(deleteModal.id, user?.id);
+      await loadQuizzes();
       setDeleteModal(null);
     }
   };
 
-  const formatDate = (iso) => {
-    if (!iso) return '';
-    return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
-
-  const shuffleQuiz = (quizId) => {
-    const quiz = quizzes.find(q => q.id === quizId);
-    if (!quiz) return;
-    quiz.questions.forEach((q) => {
-      const opts = [...q.options].sort(() => Math.random() - 0.5);
-      q.options = opts;
-    });
-    const shuffledQuestions = [...quiz.questions].sort(() => Math.random() - 0.5);
-    quiz.questions = shuffledQuestions;
-    updateQuiz(quiz.id, quiz.title, quiz.questions);
-    setQuizzes(getAllQuizzes());
-    if (viewJson && viewJson.id === quizId) {
-      const updated = getAllQuizzes().find(q => q.id === quizId);
-      setViewJson(updated);
+  const handleCopyJson = async () => {
+    if (!viewJson) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(viewJson, null, 2));
+      setCopiedJson(true);
+      setTimeout(() => setCopiedJson(false), 2000);
+    } catch {
+      // fallback
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 animate-fade-in">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-7 animate-fade-in">
 
-      {/* Header */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold gradient-text mb-1">My Quizzes</h1>
-          <p className="text-slate-400 text-sm">
-            {quizzes.length === 0 ? 'No quizzes yet — create your first one!' : `${quizzes.length} quiz${quizzes.length > 1 ? 'zes' : ''} saved`}
-          </p>
-        </div>
-        <button id="new-quiz-btn" onClick={() => onNavigate('create')} className="btn-primary shrink-0">
-          <Plus className="w-4 h-4" />
-          New Quiz
-        </button>
+      {/* ── 1. Page Header ── */}
+      <div className="pb-4 border-b border-white/[0.08]">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          My Quizzes
+        </h1>
+        <p className="text-xs sm:text-sm text-[#a39e94] mt-1">
+          {quizzes.length === 0
+            ? 'No quizzes yet — create your first quiz using the button above!'
+            : `${quizzes.length} quiz${quizzes.length > 1 ? 'zes' : ''} available • Practice & test your knowledge`}
+        </p>
       </div>
 
-      {/* Search */}
-      {quizzes.length > 0 && (
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search quizzes..."
-            className="input-field pl-10"
-          />
-        </div>
-      )}
+      {/* ── 2. Stat Cards Grid (Warm Luxury Theme) ───── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={BookOpen}
+          title="Total Quizzes"
+          value={totalQuizzesCount}
+          colorType="rose"
+        />
+        <StatCard
+          icon={Layers}
+          title="Total Questions"
+          value={totalQuestionsCount}
+          colorType="emerald"
+        />
+        <StatCard
+          icon={Clock}
+          title="Est. Practice Time"
+          value={`~${totalEstTimeMins}m`}
+          colorType="amber"
+        />
+        <StatCard
+          icon={Flame}
+          title="Format"
+          value="MCQ 4-Opt"
+          colorType="coral"
+        />
+      </div>
 
-      {/* Empty state */}
-      {quizzes.length === 0 && (
-        <div className="glass-card p-12 text-center animate-slide-up">
-          <div className="w-16 h-16 rounded-2xl bg-violet-600/20 border border-violet-500/20 flex items-center justify-center mx-auto mb-4">
-            <Sparkles className="w-8 h-8 text-violet-400" />
+      {/* ── 3. Search & Filter Bar ── */}
+      <div id="quiz-explorer">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-2 sm:p-3 rounded-2xl bg-[#151311] border border-white/[0.08]">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d877c]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search quizzes by title, topic, or keyword..."
+              className="w-full bg-transparent border-none pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-[#797368] focus:outline-none"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
-          <h2 className="text-lg font-semibold text-slate-200 mb-2">No quizzes yet</h2>
-          <p className="text-slate-400 text-sm mb-6 max-w-xs mx-auto">
-            Create your first quiz by pasting raw questions and converting them with AI.
-          </p>
-          <button onClick={() => onNavigate('create')} className="btn-primary mx-auto">
-            <Plus className="w-4 h-4" />
-            Create First Quiz
-          </button>
-        </div>
-      )}
 
-      {/* Quiz grid */}
-      {filtered.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {filtered.map((quiz, i) => (
-            <div
-              key={quiz.id}
-              className="glass-card-hover p-5 flex flex-col gap-4 animate-slide-up"
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              {/* Quiz info */}
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600/40 to-indigo-600/40 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-                  <BookOpen className="w-5 h-5 text-violet-300" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="font-semibold text-slate-100 text-base truncate" title={quiz.title}>
-                    {quiz.title}
-                  </h2>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="flex items-center gap-1 text-xs text-slate-400">
-                      <HelpCircle className="w-3 h-3" />
-                      {quiz.questions.length} Questions
-                    </span>
-                    {quiz.createdAt && (
-                      <span className="flex items-center gap-1 text-xs text-slate-500">
-                        <Calendar className="w-3 h-3" />
-                        {formatDate(quiz.createdAt)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Question preview chips */}
-              <div className="flex flex-wrap gap-1.5">
-                {quiz.questions.slice(0, 3).map((q, qi) => (
-                  <span key={qi} className="badge bg-white/5 border border-white/8 text-slate-400 max-w-[150px] truncate" title={q.question}>
-                    Q{qi + 1}: {q.question.slice(0, 28)}{q.question.length > 28 ? '…' : ''}
-                  </span>
-                ))}
-                {quiz.questions.length > 3 && (
-                  <span className="badge bg-violet-600/20 border border-violet-500/20 text-violet-400">
-                    +{quiz.questions.length - 3} more
-                  </span>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 pt-1 border-t border-white/8">
-                <button
-                  id={`start-quiz-${quiz.id}`}
-                  onClick={() => onStartQuiz(quiz)}
-                  className="btn-primary flex-1 justify-center py-2"
-                >
-                  <Play className="w-3.5 h-3.5" />
-                  Start Quiz
-                </button>
-                <button
-                  onClick={() => onEditQuiz(quiz)}
-                  className="btn-secondary py-2 px-3"
-                  title="Edit quiz"
-                >
-                  <FileEdit className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => shuffleQuiz(quiz.id)}
-                  className="btn-secondary py-2 px-3"
-                  title="Shuffle Questions"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setViewJson(quiz)}
-                  className="btn-secondary py-2 px-3"
-                  title="View JSON"
-                >
-                  <Code className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setDeleteModal(quiz)}
-                  className="btn-danger py-2 px-3"
-                  title="Delete quiz"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+          {/* Sort Dropdown */}
+          <div className="flex items-center gap-2 border-t sm:border-t-0 sm:border-l border-white/10 pt-2 sm:pt-0 sm:pl-4">
+            <span className="text-xs text-[#8d877c] font-medium hidden md:inline">Sort:</span>
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="appearance-none bg-[#1f1c19] border border-white/10 text-xs font-semibold text-slate-200 py-2 pl-3.5 pr-8 rounded-xl focus:outline-none focus:border-caramel-500 cursor-pointer"
+              >
+                <option value="latest">Latest First</option>
+                <option value="questions">Most Questions</option>
+                <option value="title">Alphabetical</option>
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 4. Quiz Cards Grid (From Reference Screenshot) ──────────── */}
+      {filteredQuizzes.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredQuizzes.map((quiz, idx) => (
+            <QuizCard
+              key={quiz.id}
+              quiz={quiz}
+              index={idx}
+              onStart={onStartQuiz}
+              onEdit={onEditQuiz}
+              onShuffle={handleShuffle}
+              onViewJson={setViewJson}
+              onDelete={setDeleteModal}
+            />
           ))}
         </div>
-      )}
-
-      {/* No results */}
-      {quizzes.length > 0 && filtered.length === 0 && (
-        <div className="glass-card p-10 text-center text-slate-400">
-          <Search className="w-8 h-8 mx-auto mb-3 opacity-40" />
-          <p>No quizzes match "<span className="text-slate-300">{search}</span>"</p>
+      ) : (
+        /* Empty State */
+        <div className="glass-card p-12 text-center max-w-lg mx-auto border-white/10 space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-caramel-500/15 border border-caramel-500/30 flex items-center justify-center mx-auto text-caramel-400 shadow-caramel-glow">
+            <Sparkles className="w-8 h-8" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">
+              {search ? 'No Matching Quizzes Found' : 'No Quizzes Created Yet'}
+            </h3>
+            <p className="text-xs text-[#a39e94] mt-1 max-w-xs mx-auto">
+              {search
+                ? `No quizzes match "${search}". Try searching another topic.`
+                : 'Create your first quiz to get started!'}
+            </p>
+          </div>
+          <div className="flex items-center justify-center pt-2">
+            <button
+              onClick={handleCreateQuiz}
+              className="btn-primary text-xs flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create First Quiz</span>
+            </button>
+          </div>
         </div>
       )}
 
-      {/* JSON Modal */}
+      {/* ── 5. View JSON Modal ─────────────────────────────────────── */}
       {viewJson && (
-        <div className="fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4" onClick={() => setViewJson(null)}>
-          <div className="w-full max-w-2xl max-h-[80vh] bg-slate-900 border border-white/10 rounded-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-white/10">
-              <h3 className="text-lg font-semibold text-slate-200">{viewJson.title}</h3>
+        <div
+          className="fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setViewJson(null)}
+        >
+          <div
+            className="w-full max-w-3xl max-h-[85vh] bg-[#151311] border border-white/15 rounded-2xl flex flex-col shadow-2xl overflow-hidden animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/10 bg-[#1c1916]">
+              <div className="flex items-center gap-2.5">
+                <Code className="w-5 h-5 text-caramel-400" />
+                <div>
+                  <h3 className="text-base font-bold text-white truncate max-w-sm sm:max-w-md">
+                    {viewJson.title}
+                  </h3>
+                  <p className="text-xs text-[#8d877c]">
+                    {viewJson.questions?.length} Questions &bull; Raw JSON Format
+                  </p>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => shuffleQuiz(viewJson.id)} className="btn-secondary py-1.5 px-3 text-xs" title="Shuffle Questions">
-                  <RefreshCw className="w-3.5 h-3.5" /> Shuffle
+                <button
+                  onClick={handleCopyJson}
+                  className="btn-secondary py-1.5 px-3 text-xs"
+                >
+                  {copiedJson ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedJson ? 'Copied' : 'Copy'}</span>
                 </button>
-                <button onClick={() => setViewJson(null)} className="text-slate-400 hover:text-white">
-                  <X className="w-5 h-5" />
+                <button
+                  onClick={() => setViewJson(null)}
+                  className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-auto p-4">
-              <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono">
+            <div className="flex-1 overflow-auto p-4 sm:p-5 bg-[#0f0e0d]">
+              <pre className="text-xs text-[#dedbd3] font-mono whitespace-pre-wrap leading-relaxed select-all">
                 {JSON.stringify(viewJson, null, 2)}
               </pre>
             </div>
@@ -220,33 +281,46 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz }) {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* ── 6. Delete Confirmation Modal ───────────────────────────── */}
       {deleteModal && (
-        <div className="fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4 animate-fade-in" onClick={() => setDeleteModal(null)}>
-          <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl p-5 animate-slide-up" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-red-400" />
+        <div
+          className="fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setDeleteModal(null)}
+        >
+          <div
+            className="w-full max-w-md bg-[#151311] border border-white/15 rounded-2xl p-6 shadow-2xl animate-slide-up space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-rose-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-200">Delete Quiz?</h3>
-                <p className="text-sm text-slate-400">This action cannot be undone.</p>
+                <h3 className="text-lg font-bold text-white">Delete this quiz?</h3>
+                <p className="text-xs text-[#a39e94] mt-1 leading-relaxed">
+                  This action will permanently delete <strong className="text-white">"{deleteModal.title}"</strong> from your database and local storage.
+                </p>
               </div>
             </div>
-            <p className="text-slate-300 text-sm mb-5">
-              Are you sure you want to delete <span className="text-white font-medium">"{deleteModal.title}"</span>?
-            </p>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setDeleteModal(null)} className="btn-secondary flex-1 justify-center">
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setDeleteModal(null)}
+                className="btn-secondary flex-1 py-2.5 text-sm"
+              >
                 Cancel
               </button>
-              <button onClick={confirmDelete} className="btn-danger flex-1 justify-center">
-                Delete
+              <button
+                onClick={handleConfirmDelete}
+                className="btn-danger flex-1 py-2.5 text-sm"
+              >
+                Delete Quiz
               </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
