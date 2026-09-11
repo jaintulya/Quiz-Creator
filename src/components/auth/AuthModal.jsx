@@ -366,7 +366,7 @@ export default function AuthModal({ isOpen, onClose, promptMessage = '', initial
                       onClick={() => {
                         onClose();
                         if (onNavigate) {
-                          onNavigate('/forgot-password');
+                          onNavigate('/forgot-password', { prefillEmail: email.trim() });
                         } else {
                           window.history.pushState({}, '', '/forgot-password');
                           window.dispatchEvent(new PopStateEvent('popstate'));
@@ -392,16 +392,23 @@ export default function AuthModal({ isOpen, onClose, promptMessage = '', initial
               </form>
             )}
 
-            {/* Toggle Sign In / Sign Up */}
             <div className="mt-4 text-center text-xs text-[#8d877c]">
               {isSignUp ? (
                 <p>Already have an account?{' '}
                   <button type="button" onClick={() => switchMode('signin')} className="text-caramel-500 font-bold hover:underline">Sign In</button>
                 </p>
               ) : (
-                <p>Don't have an account?{' '}
-                  <button type="button" onClick={() => switchMode('signup')} className="text-caramel-500 font-bold hover:underline">Create Account</button>
-                </p>
+                <div className="space-y-2">
+                  <p>Don't have an account?{' '}
+                    <button type="button" onClick={() => switchMode('signup')} className="text-caramel-500 font-bold hover:underline">Create Account</button>
+                  </p>
+                  {error && error.includes('Incorrect email or password') && (
+                    <p className="text-[11px] text-[#a39e94]">
+                      New here?{' '}
+                      <button type="button" onClick={() => switchMode('signup')} className="text-emerald-400 font-semibold hover:underline">Create an account</button>
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </>

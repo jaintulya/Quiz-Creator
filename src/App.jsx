@@ -14,9 +14,8 @@ import AuthModal from './components/auth/AuthModal.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, lastAuthEvent } = useAuth();
 
-  // Normalize initial pathname
   const getInitialPath = () => {
     if (typeof window !== 'undefined') {
       const p = window.location.pathname;
@@ -31,11 +30,10 @@ function AppContent() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState('signin');
   const [authModalMessage, setAuthModalMessage] = useState('');
+  const [prefillEmail, setPrefillEmail] = useState('');
 
-  // Handle URL change and synchronize history
-  const navigate = useCallback((target) => {
+  const navigate = useCallback((target, options = {}) => {
     let path = target;
-    // Support legacy internal names as well as actual paths
     if (target === 'home') path = '/';
     else if (target === 'dashboard') path = '/dashboard';
     else if (target === 'create' || target === 'create-quiz') path = '/create-quiz';
@@ -48,6 +46,10 @@ function AppContent() {
     else if (target === 'forgot-password') path = '/forgot-password';
     else if (target === 'reset-password') path = '/reset-password';
     else if (target === 'email-verified') path = '/email-verified';
+
+    if (options.prefillEmail) {
+      setPrefillEmail(options.prefillEmail);
+    }
 
     if (typeof window !== 'undefined' && window.location.pathname !== path) {
       window.history.pushState({}, '', path);
@@ -78,7 +80,6 @@ function AppContent() {
     setAuthModalOpen(true);
   };
 
-  // Handle direct /login or /signup URL paths
   useEffect(() => {
     if (currentPath === '/login') {
       if (user) {
@@ -95,12 +96,16 @@ function AppContent() {
     }
   }, [currentPath, user, navigate]);
 
-  // On login: if on public landing or login page, redirect to dashboard
   useEffect(() => {
-    if (user && (currentPath === '/' || currentPath === '/login' || currentPath === '/signup')) {
+    if (!user || !lastAuthEvent) return;
+    if (lastAuthEvent === 'PASSWORD_RECOVERY') return;
+    if (currentPath === '/email-verified') return;
+    if (currentPath === '/reset-password') return;
+    if (currentPath === '/forgot-password') return;
+    if (currentPath === '/' || currentPath === '/login' || currentPath === '/signup') {
       navigate('/dashboard');
     }
-  }, [user, currentPath, navigate]);
+  }, [user, currentPath, navigate, lastAuthEvent]);
 
   // On logout: if on protected page, redirect to home
   useEffect(() => {
@@ -190,6 +195,7 @@ function AppContent() {
             <ForgotPasswordPage
               onNavigate={navigate}
               onOpenLogin={() => handleOpenAuth('Please sign in with your credentials.', 'signin')}
+              prefillEmail={prefillEmail}
             />
           )}
 

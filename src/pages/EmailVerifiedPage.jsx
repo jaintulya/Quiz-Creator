@@ -3,10 +3,11 @@ import { CheckCircle2, LogIn, ArrowRight, Laptop, Sparkles, Brain } from 'lucide
 import { supabase } from '../services/supabase.js';
 
 export default function EmailVerifiedPage({ onNavigate, onOpenLogin }) {
-  // Ensure that opening the email link on a device (e.g. phone) does not auto-login that device,
-  // preventing cross-device session confusion while keeping the account fully verified in Supabase.
   useEffect(() => {
-    supabase.auth.signOut().catch(() => {});
+    const timer = setTimeout(() => {
+      supabase.auth.signOut().catch(() => {});
+    }, 500);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleGoToLogin = () => {

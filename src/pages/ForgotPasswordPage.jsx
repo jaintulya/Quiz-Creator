@@ -1,13 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Mail, KeyRound, ArrowLeft, Send, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
-export default function ForgotPasswordPage({ onNavigate, onOpenLogin }) {
+export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEmail = '' }) {
   const { sendPasswordResetEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+
+  useEffect(() => {
+    if (prefillEmail && !email) {
+      setEmail(prefillEmail);
+    }
+  }, [prefillEmail]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lastAuthEvent, setLastAuthEvent] = useState(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -14,7 +15,6 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    // Get current Supabase session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setSession(session);
@@ -25,9 +25,15 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
-    // Listen to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
+      (event, newSession) => {
+        setLastAuthEvent(event);
+        if (event === 'PASSWORD_RECOVERY') {
+          setSession(newSession);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
         setSession(newSession);
         if (newSession?.user) {
           setUser(newSession.user);
@@ -236,6 +242,7 @@ export function AuthProvider({ children }) {
     user,
     session,
     loading,
+    lastAuthEvent,
     isConfigured: isSupabaseConfigured,
     signInWithGoogle,
     signInWithEmail,
