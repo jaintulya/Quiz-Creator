@@ -108,11 +108,14 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
   };
 
   const handleGoToLogin = () => {
-    if (onOpenLogin) {
-      onOpenLogin();
-    } else if (onNavigate) {
-      onNavigate('/login');
+    if (onNavigate) {
+      onNavigate('/');
     }
+    setTimeout(() => {
+      if (onOpenLogin) {
+        onOpenLogin();
+      }
+    }, 100);
   };
 
   // ── Loading state while verifying recovery session ──

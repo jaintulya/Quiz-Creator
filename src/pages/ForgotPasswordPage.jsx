@@ -1,19 +1,25 @@
 import { useState, useEffect } from 'react';
-import { Mail, KeyRound, ArrowLeft, Send, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { Mail, KeyRound, ArrowLeft, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
-export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEmail = '' }) {
+export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEmail = '', hideNav }) {
   const { sendPasswordResetEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const isLocked = Boolean(prefillEmail);
 
   useEffect(() => {
     if (prefillEmail && !email) {
       setEmail(prefillEmail);
     }
   }, [prefillEmail]);
+
+  useEffect(() => {
+    if (hideNav) hideNav(true);
+    return () => { if (hideNav) hideNav(false); };
+  }, [hideNav]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -90,15 +96,6 @@ export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEma
               >
                 <span>Return to Login</span>
               </button>
-              <button
-                onClick={() => {
-                  setIsSuccess(false);
-                  setError('');
-                }}
-                className="btn-ghost w-full py-2 text-xs text-[#8d877c] hover:text-white"
-              >
-                Send to another email
-              </button>
             </div>
           </div>
         ) : (
@@ -131,11 +128,12 @@ export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEma
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => !isLocked && setEmail(e.target.value)}
+                    readOnly={isLocked}
                     placeholder="you@email.com"
                     required
-                    className="input-field pl-10 text-sm"
-                    autoFocus
+                    className={`input-field pl-10 text-sm ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    autoFocus={!isLocked}
                   />
                 </div>
               </div>

@@ -363,7 +363,9 @@ export default function AuthModal({ isOpen, onClose, promptMessage = '', initial
                     <label className="block text-xs font-semibold text-[#a39e94]">Password</label>
                     <button
                       type="button"
+                      disabled={!email.trim()}
                       onClick={() => {
+                        if (!email.trim()) return;
                         onClose();
                         if (onNavigate) {
                           onNavigate('/forgot-password', { prefillEmail: email.trim() });
@@ -372,7 +374,7 @@ export default function AuthModal({ isOpen, onClose, promptMessage = '', initial
                           window.dispatchEvent(new PopStateEvent('popstate'));
                         }
                       }}
-                      className="text-xs text-[#f5ba72] hover:text-[#e59d4c] font-semibold transition-colors"
+                      className="text-xs text-[#f5ba72] hover:text-[#e59d4c] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-[#f5ba72]"
                       id="auth-forgot-password-link"
                     >
                       Forgot password?

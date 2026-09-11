@@ -97,11 +97,9 @@ function AppContent() {
   }, [currentPath, user, navigate]);
 
   useEffect(() => {
+    if (currentPath === '/reset-password' || currentPath === '/forgot-password' || currentPath === '/email-verified') return;
     if (!user || !lastAuthEvent) return;
     if (lastAuthEvent === 'PASSWORD_RECOVERY') return;
-    if (currentPath === '/email-verified') return;
-    if (currentPath === '/reset-password') return;
-    if (currentPath === '/forgot-password') return;
     if (currentPath === '/' || currentPath === '/login' || currentPath === '/signup') {
       navigate('/dashboard');
     }
@@ -138,7 +136,7 @@ function AppContent() {
     navigate('/play');
   };
 
-  const showNav = currentPath !== '/play';
+  const showNav = currentPath !== '/play' && currentPath !== '/forgot-password' && currentPath !== '/reset-password' && currentPath !== '/email-verified';
 
   // Determine current active page for Navbar highlights
   const getNavActivePage = () => {
