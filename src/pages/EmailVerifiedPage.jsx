@@ -51,7 +51,7 @@ export default function EmailVerifiedPage({ onNavigate, onOpenLogin }) {
             <span>Ready to Learn</span>
           </div>
           <p className="text-xs sm:text-sm text-[#dedbd3] leading-relaxed">
-            You can now return to your laptop and log in.
+            You can now return and log in.
           </p>
           <p className="text-[11px] text-[#8d877c] leading-relaxed border-t border-white/5 pt-2">
             Your QuizCraft account is activated. Use your registered email and password to access your dashboard from any device.
