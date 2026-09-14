@@ -48,10 +48,10 @@ export default function EmailVerifiedPage({ onNavigate, onOpenLogin }) {
   }, []);
 
   const handleGoToLogin = () => {
-    if (onOpenLogin) {
-      onOpenLogin();
-    } else if (onNavigate) {
+    if (onNavigate) {
       onNavigate('/login');
+    } else if (onOpenLogin) {
+      onOpenLogin();
     }
   };
 

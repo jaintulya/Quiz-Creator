@@ -10,7 +10,7 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import EmailVerifiedPage from './pages/EmailVerifiedPage.jsx';
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
-import AuthModal from './components/auth/AuthModal.jsx';
+import LoginPage from './pages/LoginPage.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { isEmailConfirmationUrl, isPasswordRecoveryUrl } from './services/supabase.js';
 
@@ -34,9 +34,7 @@ function AppContent() {
   const [currentPath, setCurrentPath] = useState(getInitialPath);
   const [activeQuiz, setActiveQuiz] = useState(null);
   const [quizResult, setQuizResult] = useState(null);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState('signin');
-  const [authModalMessage, setAuthModalMessage] = useState('');
+  const [authPromptMessage, setAuthPromptMessage] = useState('');
   const [prefillEmail, setPrefillEmail] = useState('');
 
   const navigate = useCallback((target, options = {}) => {
@@ -55,7 +53,12 @@ function AppContent() {
     else if (target === 'email-verified') path = '/email-verified';
 
     // Set prefill email for forgot-password page (or clear if empty)
-    setPrefillEmail(options.prefillEmail || '');
+    if (options.prefillEmail !== undefined) {
+      setPrefillEmail(options.prefillEmail);
+    }
+    if (options.promptMessage !== undefined) {
+      setAuthPromptMessage(options.promptMessage);
+    }
 
     if (typeof window !== 'undefined' && window.location.pathname !== path) {
       window.history.pushState({}, '', path);
@@ -84,36 +87,16 @@ function AppContent() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Open authentication modal
+  // Dedicated auth navigation handler
   const handleOpenAuth = (msgOrMode = '', initialMode = 'signin') => {
-    if (msgOrMode === 'signin' || msgOrMode === 'signup') {
-      setAuthModalMode(msgOrMode);
-      setAuthModalMessage('');
-    } else {
-      setAuthModalMode(initialMode);
-      setAuthModalMessage(typeof msgOrMode === 'string' ? msgOrMode : '');
-    }
-    setAuthModalOpen(true);
+    const mode = (msgOrMode === 'signin' || msgOrMode === 'signup') ? msgOrMode : initialMode;
+    const msg = typeof msgOrMode === 'string' && msgOrMode !== 'signin' && msgOrMode !== 'signup' ? msgOrMode : '';
+    navigate(mode === 'signup' ? '/signup' : '/login', { promptMessage: msg });
   };
 
+  // Logged-in user redirection
   useEffect(() => {
-    if (currentPath === '/login') {
-      if (user) {
-        navigate('/dashboard');
-      } else {
-        handleOpenAuth('Please sign in to continue.', 'signin');
-      }
-    } else if (currentPath === '/signup') {
-      if (user) {
-        navigate('/dashboard');
-      } else {
-        handleOpenAuth('Create your QuizCraft account.', 'signup');
-      }
-    }
-  }, [currentPath, user, navigate]);
-
-  useEffect(() => {
-    // NEVER redirect to dashboard on public auth utility routes or during confirmation/recovery
+    // NEVER redirect away from public auth utility routes or during recovery
     if (
       currentPath === '/reset-password' ||
       currentPath === '/forgot-password' ||
@@ -126,18 +109,18 @@ function AppContent() {
     if (!user) return;
     if (lastAuthEvent === 'PASSWORD_RECOVERY') return;
 
-    // Normal login, Google OAuth, or returning logged-in user: send to dashboard
+    // Normal login, Google OAuth, or logged-in user on root/login/signup -> send to dashboard
     if (currentPath === '/' || currentPath === '/login' || currentPath === '/signup') {
       navigate('/dashboard');
     }
   }, [user, currentPath, navigate, lastAuthEvent]);
 
-  // On logout: if on protected page, redirect to home
+  // Protected route guard: unauthenticated users redirect to /login
   useEffect(() => {
     if (!user && !loading) {
       const protectedPaths = ['/dashboard', '/my-quizzes', '/create-quiz', '/profile', '/edit'];
       if (protectedPaths.includes(currentPath)) {
-        navigate('/');
+        navigate('/login', { promptMessage: 'Please sign in to access your dashboard and quizzes.' });
       }
     }
   }, [user, loading, currentPath, navigate]);
@@ -163,7 +146,7 @@ function AppContent() {
     navigate('/play');
   };
 
-  const showNav = currentPath !== '/play' && currentPath !== '/forgot-password' && currentPath !== '/reset-password' && currentPath !== '/email-verified';
+  const showNav = currentPath !== '/play';
 
   // Determine current active page for Navbar highlights
   const getNavActivePage = () => {
@@ -171,6 +154,8 @@ function AppContent() {
     if (currentPath === '/my-quizzes') return 'list';
     if (currentPath === '/dashboard') return 'dashboard';
     if (currentPath === '/profile') return 'profile';
+    if (currentPath === '/login') return 'login';
+    if (currentPath === '/signup') return 'signup';
     return 'home';
   };
 
@@ -211,7 +196,6 @@ function AppContent() {
           {currentPath === '/email-verified' && (
             <EmailVerifiedPage
               onNavigate={navigate}
-              onOpenLogin={() => handleOpenAuth('Please sign in with your verified credentials.', 'signin')}
             />
           )}
 
@@ -219,7 +203,6 @@ function AppContent() {
           {currentPath === '/forgot-password' && (
             <ForgotPasswordPage
               onNavigate={navigate}
-              onOpenLogin={() => handleOpenAuth('Please sign in with your credentials.', 'signin')}
               prefillEmail={prefillEmail}
             />
           )}
@@ -228,13 +211,34 @@ function AppContent() {
           {currentPath === '/reset-password' && (
             <ResetPasswordPage
               onNavigate={navigate}
-              onOpenLogin={() => handleOpenAuth('Please sign in with your new password.', 'signin')}
+            />
+          )}
+
+          {/* ── PUBLIC ROUTE: /login ── */}
+          {currentPath === '/login' && !user && (
+            <LoginPage
+              mode="signin"
+              onNavigate={navigate}
+              promptMessage={authPromptMessage}
+              prefillEmail={prefillEmail}
+            />
+          )}
+
+          {/* ── PUBLIC ROUTE: /signup ── */}
+          {currentPath === '/signup' && !user && (
+            <LoginPage
+              mode="signup"
+              onNavigate={navigate}
+              promptMessage={authPromptMessage}
             />
           )}
 
           {/* ── PUBLIC ROUTE: / (Landing Page for guests) ── */}
-          {(currentPath === '/' || currentPath === '/login' || currentPath === '/signup') && !user && (
-            <LandingPage onOpenAuth={(msg) => handleOpenAuth(msg, 'signup')} />
+          {currentPath === '/' && !user && (
+            <LandingPage
+              onNavigate={navigate}
+              onOpenAuth={(msg) => handleOpenAuth(msg, 'signup')}
+            />
           )}
 
           {/* ── PROTECTED ROUTE: /dashboard ── */}
@@ -307,9 +311,9 @@ function AppContent() {
                   </>
                 ) : (
                   <>
-                    <button onClick={() => handleOpenAuth('signin')} className="hover:text-[#f5ba72] transition-colors">Sign In</button>
+                    <button onClick={() => navigate('/login')} className="hover:text-[#f5ba72] transition-colors">Sign In</button>
                     <span>&bull;</span>
-                    <button onClick={() => handleOpenAuth('signup')} className="hover:text-[#f5ba72] transition-colors">Create Account</button>
+                    <button onClick={() => navigate('/signup')} className="hover:text-[#f5ba72] transition-colors">Create Account</button>
                     <span>&bull;</span>
                     <button onClick={() => navigate('/forgot-password')} className="hover:text-[#f5ba72] transition-colors">Forgot Password</button>
                   </>
@@ -319,24 +323,6 @@ function AppContent() {
           </footer>
         )}
       </div>
-
-      {/* Global Authentication Modal */}
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => {
-          setAuthModalOpen(false);
-          // If was on /login or /signup URL, return to root
-          if (currentPath === '/login' || currentPath === '/signup') {
-            if (typeof window !== 'undefined' && window.location.pathname !== '/') {
-              window.history.pushState({}, '', '/');
-            }
-            setCurrentPath('/');
-          }
-        }}
-        promptMessage={authModalMessage}
-        initialMode={authModalMode}
-        onNavigate={navigate}
-      />
     </div>
   );
 }

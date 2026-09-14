@@ -48,10 +48,10 @@ export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEma
   };
 
   const handleBackToLogin = () => {
-    if (onOpenLogin) {
-      onOpenLogin();
-    } else if (onNavigate) {
+    if (onNavigate) {
       onNavigate('/login');
+    } else if (onOpenLogin) {
+      onOpenLogin();
     }
   };
 

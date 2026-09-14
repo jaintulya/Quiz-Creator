@@ -55,7 +55,7 @@ const TESTIMONIALS = [
   },
 ];
 
-export default function LandingPage({ onOpenAuth }) {
+export default function LandingPage({ onOpenAuth, onNavigate }) {
   return (
     <div className="relative overflow-x-hidden">
       {/* ── Hero Section ── */}
@@ -90,7 +90,7 @@ export default function LandingPage({ onOpenAuth }) {
         {/* Single CTA */}
         <div className="relative mt-10 animate-slide-up">
           <button
-            onClick={() => onOpenAuth('Join QuizCraft and start creating AI-powered quizzes for free.')}
+            onClick={() => (onNavigate ? onNavigate('/signup') : onOpenAuth && onOpenAuth('Join QuizCraft and start creating AI-powered quizzes for free.'))}
             className="btn-primary-lg flex items-center gap-2 group"
             id="hero-cta-signup"
           >
@@ -224,7 +224,7 @@ export default function LandingPage({ onOpenAuth }) {
               Create your free account and start building AI-powered quizzes in under 2 minutes.
             </p>
             <button
-              onClick={() => onOpenAuth('Create a free account to start building your first AI quiz.')}
+              onClick={() => (onNavigate ? onNavigate('/signup') : onOpenAuth && onOpenAuth('Create a free account to start building your first AI quiz.'))}
               className="btn-primary-lg flex items-center gap-2 group mx-auto"
               id="cta-banner-signup"
             >

@@ -9,7 +9,7 @@ export default function UserMenu({ onOpenAuth, onNavigate }) {
   if (!user) {
     return (
       <button
-        onClick={() => onOpenAuth && onOpenAuth()}
+        onClick={() => (onNavigate ? onNavigate('login') : onOpenAuth && onOpenAuth())}
         className="btn-secondary py-1.5 px-3 sm:px-4 text-xs font-semibold flex items-center gap-1.5"
       >
         <User className="w-3.5 h-3.5 text-caramel-500" />
