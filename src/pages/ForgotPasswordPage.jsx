@@ -2,24 +2,18 @@ import { useState, useEffect } from 'react';
 import { Mail, KeyRound, ArrowLeft, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
-export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEmail = '', hideNav }) {
+export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEmail = '' }) {
   const { sendPasswordResetEmail } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(prefillEmail || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
-  const isLocked = Boolean(prefillEmail);
 
   useEffect(() => {
-    if (prefillEmail && !email) {
+    if (prefillEmail) {
       setEmail(prefillEmail);
     }
   }, [prefillEmail]);
-
-  useEffect(() => {
-    if (hideNav) hideNav(true);
-    return () => { if (hideNav) hideNav(false); };
-  }, [hideNav]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,7 +30,11 @@ export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEma
       await sendPasswordResetEmail(cleanEmail);
       setIsSuccess(true);
     } catch (err) {
-      setError(err.message || 'Failed to send password reset email. Please try again.');
+      let msg = err.message || 'Failed to send password reset email. Please try again.';
+      if (msg.includes('rate limit') || msg.includes('over_email_send_rate_limit')) {
+        msg = 'Too many requests. Please wait a few minutes before trying again.';
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -74,9 +72,8 @@ export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEma
 
             <div className="space-y-2">
               <h2 className="text-2xl font-extrabold text-white">Reset Link Sent!</h2>
-              <p className="text-xs sm:text-sm text-[#a39e94] leading-relaxed">
-                We have sent a password reset link to<br />
-                <strong className="text-white font-semibold">{email}</strong>
+              <p className="text-xs sm:text-sm text-[#dedbd3] leading-relaxed">
+                If an account exists for this email, a password reset link has been sent.
               </p>
             </div>
 
@@ -128,12 +125,11 @@ export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEma
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => !isLocked && setEmail(e.target.value)}
-                    readOnly={isLocked}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@email.com"
                     required
-                    className={`input-field pl-10 text-sm ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    autoFocus={!isLocked}
+                    className="input-field pl-10 text-sm"
+                    autoFocus
                   />
                 </div>
               </div>

@@ -12,12 +12,19 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import AuthModal from './components/auth/AuthModal.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { isEmailConfirmationUrl, isPasswordRecoveryUrl } from './services/supabase.js';
 
 function AppContent() {
   const { user, loading, lastAuthEvent } = useAuth();
 
   const getInitialPath = () => {
     if (typeof window !== 'undefined') {
+      if (isEmailConfirmationUrl()) {
+        return '/email-verified';
+      }
+      if (isPasswordRecoveryUrl()) {
+        return '/reset-password';
+      }
       const p = window.location.pathname;
       if (p && p !== '/') return p.replace(/\/+$/, '');
     }
@@ -47,9 +54,8 @@ function AppContent() {
     else if (target === 'reset-password') path = '/reset-password';
     else if (target === 'email-verified') path = '/email-verified';
 
-    if (options.prefillEmail) {
-      setPrefillEmail(options.prefillEmail);
-    }
+    // Set prefill email for forgot-password page (or clear if empty)
+    setPrefillEmail(options.prefillEmail || '');
 
     if (typeof window !== 'undefined' && window.location.pathname !== path) {
       window.history.pushState({}, '', path);
@@ -58,8 +64,18 @@ function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Sync with browser back / forward navigation
+  // Sync with browser back / forward navigation and normalize callback URLs
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (isEmailConfirmationUrl() && window.location.pathname !== '/email-verified') {
+        window.history.replaceState({}, '', '/email-verified' + window.location.hash + window.location.search);
+        setCurrentPath('/email-verified');
+      } else if (isPasswordRecoveryUrl() && window.location.pathname !== '/reset-password') {
+        window.history.replaceState({}, '', '/reset-password' + window.location.hash + window.location.search);
+        setCurrentPath('/reset-password');
+      }
+    }
+
     const handlePopState = () => {
       const p = window.location.pathname ? window.location.pathname.replace(/\/+$/, '') : '/';
       setCurrentPath(p || '/');
@@ -97,9 +113,20 @@ function AppContent() {
   }, [currentPath, user, navigate]);
 
   useEffect(() => {
-    if (currentPath === '/reset-password' || currentPath === '/forgot-password' || currentPath === '/email-verified') return;
-    if (!user || !lastAuthEvent) return;
+    // NEVER redirect to dashboard on public auth utility routes or during confirmation/recovery
+    if (
+      currentPath === '/reset-password' ||
+      currentPath === '/forgot-password' ||
+      currentPath === '/email-verified' ||
+      isEmailConfirmationUrl() ||
+      isPasswordRecoveryUrl()
+    ) {
+      return;
+    }
+    if (!user) return;
     if (lastAuthEvent === 'PASSWORD_RECOVERY') return;
+
+    // Normal login, Google OAuth, or returning logged-in user: send to dashboard
     if (currentPath === '/' || currentPath === '/login' || currentPath === '/signup') {
       navigate('/dashboard');
     }
@@ -211,7 +238,7 @@ function AppContent() {
           )}
 
           {/* ── PROTECTED ROUTE: /dashboard ── */}
-          {(currentPath === '/dashboard' || (currentPath === '/' && user)) && user && (
+          {currentPath === '/dashboard' && user && (
             <Dashboard
               onNavigate={navigate}
               onStartQuiz={handleStartQuiz}

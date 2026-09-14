@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
   X, Mail, Lock, Sparkles, LogIn, UserPlus, AlertCircle, CheckCircle2,
-  ArrowLeft, User, BookOpen, MailCheck
+  User, BookOpen, MailCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { supabase } from '../../services/supabase.js';
 
 const COURSE_OPTIONS = [
   'BCA', 'MCA', 'BCS', 'BECE', 'B.Tech (CS)', 'B.Tech (EC)', 'B.Tech (IT)',
@@ -12,7 +11,7 @@ const COURSE_OPTIONS = [
 ];
 
 export default function AuthModal({ isOpen, onClose, promptMessage = '', initialMode = 'signin', onNavigate }) {
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail, resendSignupEmail } = useAuth();
 
   // mode: 'signin' | 'signup' | 'confirm_notice'
   const [mode, setMode] = useState(initialMode || 'signin');
@@ -51,7 +50,8 @@ export default function AuthModal({ isOpen, onClose, promptMessage = '', initial
   };
 
   const switchMode = (newMode) => {
-    reset();
+    setError(''); setSuccess('');
+    setPassword('');
     setMode(newMode);
   };
 
@@ -82,9 +82,9 @@ export default function AuthModal({ isOpen, onClose, promptMessage = '', initial
     } catch (err) {
       let msg = err.message || 'Authentication failed.';
       if (msg.includes('Invalid login credentials')) {
-        msg = 'Incorrect email or password. Please check your credentials or confirm your email.';
+        msg = 'Incorrect email or password.';
       } else if (msg.includes('Email not confirmed')) {
-        msg = 'Your email is not confirmed yet. Please check your inbox and click the confirmation link.';
+        msg = 'Please verify your email before logging in.';
       }
       setError(msg);
     } finally {
@@ -132,12 +132,7 @@ export default function AuthModal({ isOpen, onClose, promptMessage = '', initial
     setError('');
     setSuccess('');
     try {
-      const { error: resendError } = await supabase.auth.resend({
-        type: 'signup',
-        email: email.trim(),
-        options: { emailRedirectTo: window.location.origin },
-      });
-      if (resendError) throw resendError;
+      await resendSignupEmail(email);
       setSuccess('A fresh confirmation link has been sent to your email!');
       setResendCooldown(30);
     } catch (err) {
@@ -191,9 +186,21 @@ export default function AuthModal({ isOpen, onClose, promptMessage = '', initial
 
         {/* Error / Success */}
         {error && (
-          <div className="p-3 mb-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2 animate-fade-in leading-relaxed">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{error}</span>
+          <div className="p-3 mb-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex flex-col gap-2 animate-fade-in leading-relaxed">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+            {error.includes('Please verify your email') && (
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={resendCooldown > 0 || loading || !email.trim()}
+                className="self-start text-[11px] font-bold text-[#f5ba72] hover:underline disabled:opacity-50 transition-colors"
+              >
+                {resendCooldown > 0 ? `Resend confirmation in ${resendCooldown}s` : 'Resend Confirmation Email'}
+              </button>
+            )}
           </div>
         )}
         {success && (
@@ -363,18 +370,17 @@ export default function AuthModal({ isOpen, onClose, promptMessage = '', initial
                     <label className="block text-xs font-semibold text-[#a39e94]">Password</label>
                     <button
                       type="button"
-                      disabled={!email.trim()}
                       onClick={() => {
-                        if (!email.trim()) return;
+                        const currentEmail = email.trim();
                         onClose();
                         if (onNavigate) {
-                          onNavigate('/forgot-password', { prefillEmail: email.trim() });
+                          onNavigate('/forgot-password', { prefillEmail: currentEmail });
                         } else {
                           window.history.pushState({}, '', '/forgot-password');
                           window.dispatchEvent(new PopStateEvent('popstate'));
                         }
                       }}
-                      className="text-xs text-[#f5ba72] hover:text-[#e59d4c] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-[#f5ba72]"
+                      className="text-xs text-[#f5ba72] hover:text-[#e59d4c] font-semibold transition-colors"
                       id="auth-forgot-password-link"
                     >
                       Forgot password?

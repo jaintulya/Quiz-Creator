@@ -20,9 +20,15 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
 
   // Load quizzes from Supabase (or local fallback)
   const loadQuizzes = async () => {
+    if (!user) {
+      setQuizzes([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    setQuizzes([]);
     try {
-      const data = await fetchAllQuizzes(user?.id);
+      const data = await fetchAllQuizzes(user.id);
       setQuizzes(data);
     } catch (err) {
       console.error('Error fetching quizzes:', err);

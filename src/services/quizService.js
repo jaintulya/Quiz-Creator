@@ -10,7 +10,7 @@ import {
 // ─── Fetch Quizzes (Supabase — per user) ────────────────────────────────────
 export async function fetchAllQuizzes(userId = null) {
   if (!isSupabaseConfigured || !userId) {
-    return getLocalQuizzes();
+    return [];
   }
 
   try {
@@ -21,8 +21,8 @@ export async function fetchAllQuizzes(userId = null) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.warn('Supabase fetch error, falling back to local:', error.message);
-      return getLocalQuizzes();
+      console.warn('Supabase fetch error:', error.message);
+      return [];
     }
 
     if (data) {

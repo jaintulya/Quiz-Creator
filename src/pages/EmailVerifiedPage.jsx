@@ -4,10 +4,47 @@ import { supabase } from '../services/supabase.js';
 
 export default function EmailVerifiedPage({ onNavigate, onOpenLogin }) {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      supabase.auth.signOut().catch(() => {});
-    }, 500);
-    return () => clearTimeout(timer);
+    if (typeof window === 'undefined') return;
+
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+
+    const hasCallbackParams = Boolean(
+      hash.includes('type=signup') ||
+      hash.includes('type=email_change') ||
+      hash.includes('access_token') ||
+      search.includes('type=signup') ||
+      search.includes('type=email_change') ||
+      search.includes('code=') ||
+      search.includes('token_hash')
+    );
+
+    // If reached via confirmation callback, strip tokens from address bar immediately
+    if (hasCallbackParams || hash || search) {
+      try {
+        window.history.replaceState({}, '', '/email-verified');
+      } catch { /* history unavailable */ }
+    }
+
+    // Only process confirmation-session cleanup when reached through an actual confirmation callback
+    if (hasCallbackParams) {
+      const timer = setTimeout(async () => {
+        try {
+          await supabase.auth.signOut({ scope: 'local' });
+        } catch {
+          // Fallback: clear auth tokens from localStorage for this client if signOut threw
+          try {
+            Object.keys(localStorage).forEach((key) => {
+              if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                localStorage.removeItem(key);
+              }
+            });
+          } catch { /* storage unavailable */ }
+        }
+      }, 400);
+
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   const handleGoToLogin = () => {
@@ -51,8 +88,8 @@ export default function EmailVerifiedPage({ onNavigate, onOpenLogin }) {
             <Laptop className="w-4 h-4 text-caramel-400" />
             <span>Ready to Learn</span>
           </div>
-          <p className="text-xs sm:text-sm text-[#dedbd3] leading-relaxed">
-            You can now return and log in.
+          <p className="text-xs sm:text-sm text-[#dedbd3] font-medium leading-relaxed">
+            You can now return to your laptop and log in.
           </p>
           <p className="text-[11px] text-[#8d877c] leading-relaxed border-t border-white/5 pt-2">
             Your QuizCraft account is activated. Use your registered email and password to access your dashboard from any device.

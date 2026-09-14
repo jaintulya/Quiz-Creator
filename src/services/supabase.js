@@ -63,3 +63,53 @@ export function getSiteUrl() {
 
   return 'https://makeyourquiz.vercel.app';
 }
+
+/**
+ * Checks if the current browser URL carries an email confirmation callback.
+ */
+export function isEmailConfirmationUrl() {
+  if (typeof window === 'undefined') return false;
+  const p = window.location.pathname ? window.location.pathname.replace(/\/+$/, '') : '';
+  const hash = window.location.hash || '';
+  const search = window.location.search || '';
+
+  return (
+    p === '/email-verified' ||
+    hash.includes('type=signup') ||
+    hash.includes('type=email_change') ||
+    search.includes('type=signup') ||
+    search.includes('type=email_change')
+  );
+}
+
+/**
+ * Checks if the current browser URL carries a password recovery callback.
+ */
+export function isPasswordRecoveryUrl() {
+  if (typeof window === 'undefined') return false;
+  const p = window.location.pathname ? window.location.pathname.replace(/\/+$/, '') : '';
+  const hash = window.location.hash || '';
+  const search = window.location.search || '';
+
+  return (
+    p === '/reset-password' ||
+    hash.includes('type=recovery') ||
+    search.includes('type=recovery')
+  );
+}
+
+/**
+ * Checks if the URL contains an auth error returned by Supabase.
+ */
+export function hasAuthErrorInUrl() {
+  if (typeof window === 'undefined') return false;
+  const hash = window.location.hash || '';
+  const search = window.location.search || '';
+
+  return (
+    hash.includes('error=') ||
+    search.includes('error=') ||
+    hash.includes('error_code=') ||
+    search.includes('error_code=')
+  );
+}

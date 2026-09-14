@@ -21,36 +21,60 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
   useEffect(() => {
     let isMounted = true;
 
-    // Check URL parameters and hash for recovery signatures
     const hash = window.location.hash || '';
     const search = window.location.search || '';
-    const hasRecoveryInUrl =
+    const hasRecoveryMarker =
       hash.includes('type=recovery') ||
       search.includes('type=recovery') ||
       search.includes('code=');
 
-    // 1. Listen for Supabase auth state change events
+    const hasErrorParam =
+      hash.includes('error=') ||
+      search.includes('error=') ||
+      hash.includes('error_code=') ||
+      search.includes('error_code=') ||
+      hash.includes('error_description=') ||
+      search.includes('error_description=');
+
+    // If an error is present or no recovery marker exists, immediately fail
+    if (hasErrorParam || !hasRecoveryMarker) {
+      setHasValidSession(false);
+      setCheckingSession(false);
+      return () => { isMounted = false; };
+    }
+
+    const acceptRecovery = (session) => {
+      if (!isMounted) return;
+      if (session) {
+        setHasValidSession(true);
+        setCheckingSession(false);
+        // Strip the recovery code/hash from the address bar
+        try {
+          window.history.replaceState({}, '', window.location.pathname);
+        } catch { /* history unavailable */ }
+      } else {
+        setHasValidSession(false);
+        setCheckingSession(false);
+      }
+    };
+
+    // 1. Listen for Supabase PASSWORD_RECOVERY event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
       if (event === 'PASSWORD_RECOVERY') {
-        setHasValidSession(true);
-        setCheckingSession(false);
-      } else if (session && hasRecoveryInUrl) {
-        setHasValidSession(true);
-        setCheckingSession(false);
+        acceptRecovery(session);
       }
     });
 
-    // 2. Check current session
+    // 2. Also check if the recovery session was already resolved
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!isMounted) return;
-      // Valid recovery session requires either the recovery event/URL or an active recovery token session
-      if (session && (hasRecoveryInUrl || hash.includes('access_token'))) {
-        setHasValidSession(true);
-      } else if (!hasRecoveryInUrl && !hash.includes('access_token')) {
+      if (session && hasRecoveryMarker) {
+        acceptRecovery(session);
+      } else if (!session && !checkingSession) {
         setHasValidSession(false);
+        setCheckingSession(false);
       }
-      setCheckingSession(false);
     }).catch(() => {
       if (isMounted) {
         setHasValidSession(false);
@@ -58,12 +82,12 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
       }
     });
 
-    // Safety timeout in case token parsing is asynchronous
+    // 3. Safety timeout if recovery session cannot be verified within 4s
     const timer = setTimeout(() => {
-      if (isMounted && checkingSession) {
+      if (isMounted) {
         setCheckingSession(false);
       }
-    }, 2500);
+    }, 4000);
 
     return () => {
       isMounted = false;
@@ -91,13 +115,20 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
 
     setLoading(true);
     try {
+      // Final check: valid session must be active
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.user) {
+        throw new Error('Your reset session is no longer valid. Please request a new reset link.');
+      }
+
+      // Update password for the currently verified recovery session user
       const { error: updateError } = await supabase.auth.updateUser({
         password: password.trim(),
       });
       if (updateError) throw updateError;
 
-      // Sign out of the temporary recovery session so user logs in cleanly with new credentials
-      await supabase.auth.signOut().catch(() => {});
+      // Safely sign out the recovery session locally on this device
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
 
       setIsSuccess(true);
     } catch (err) {
@@ -109,7 +140,7 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
 
   const handleGoToLogin = () => {
     if (onNavigate) {
-      onNavigate('/');
+      onNavigate('/login');
     }
     setTimeout(() => {
       if (onOpenLogin) {
@@ -146,7 +177,7 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
               Invalid or Expired Reset Link
             </h1>
             <p className="text-xs sm:text-sm text-[#a39e94] leading-relaxed">
-              This password reset link is invalid or has expired. Please request a new reset link.
+              This password reset link is invalid or has expired.
             </p>
           </div>
 
@@ -163,7 +194,7 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
               onClick={handleGoToLogin}
               className="btn-ghost w-full py-2 text-xs text-[#8d877c] hover:text-white"
             >
-              Back to Login
+              Return to Login
             </button>
           </div>
         </div>
@@ -182,16 +213,12 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
 
           <div className="space-y-2">
             <h1 className="text-2xl font-extrabold text-white">
-              Password Updated Successfully!
+              Password updated successfully.
             </h1>
-            <p className="text-xs sm:text-sm text-[#a39e94] leading-relaxed">
-              Your password has been changed successfully.
+            <p className="text-xs sm:text-sm text-[#dedbd3] leading-relaxed">
+              You can now log in with your new password.
             </p>
           </div>
-
-          <p className="text-xs text-[#dedbd3] p-3 rounded-xl bg-white/[0.03] border border-white/10">
-            You can now log in to your QuizCraft account using your new password.
-          </p>
 
           <div className="pt-2">
             <button
@@ -222,7 +249,7 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
           </div>
           <h1 className="text-2xl font-extrabold text-white">Reset Password</h1>
           <p className="text-xs sm:text-sm text-[#a39e94] max-w-xs mx-auto leading-relaxed">
-            Enter your new password below.
+            Enter your new password below to secure your account.
           </p>
         </div>
 

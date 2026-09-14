@@ -110,6 +110,23 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  // Resend Confirmation Email
+  // Uses the same /email-verified redirect as the original sign-up so a resent
+  // link lands on the verification success page, not the site root.
+  const resendSignupEmail = async (email) => {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase is not configured yet.');
+    }
+    const redirectTo = `${getSiteUrl()}/email-verified`;
+    const { data, error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim(),
+      options: { emailRedirectTo: redirectTo },
+    });
+    if (error) throw error;
+    return data;
+  };
+
   // Send Password Reset Email
   // Sends password reset link directing to /reset-password
   const sendPasswordResetEmail = async (email) => {
@@ -173,14 +190,23 @@ export function AuthProvider({ children }) {
   };
 
   // Sign Out
-  const signOut = async () => {
+  const signOut = async (options = { scope: 'local' }) => {
     if (isSupabaseConfigured) {
       try {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut(options);
       } catch {
         // ignore
       }
     }
+    // Clear cached user quizzes so User A's data never leaks to User B
+    try {
+      localStorage.removeItem('quizcraft_quizzes');
+    } catch { /* storage unavailable */ }
+    // Clear the recovery marker so a stale flag from a previous reset
+    // can never validate a future /reset-password visit for another account.
+    try {
+      sessionStorage.removeItem('qc_recovery_email');
+    } catch { /* storage unavailable */ }
     setUser(null);
     setSession(null);
   };
@@ -247,6 +273,7 @@ export function AuthProvider({ children }) {
     signInWithGoogle,
     signInWithEmail,
     signUpWithEmail,
+    resendSignupEmail,
     sendPasswordResetEmail,
     verifyOtp,
     resendOtp,

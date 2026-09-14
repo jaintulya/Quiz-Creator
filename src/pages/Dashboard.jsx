@@ -32,7 +32,13 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setQuizzes([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setQuizzes([]);
     fetchAllQuizzes(user.id).then((data) => {
       setQuizzes(data);
       setLoading(false);
