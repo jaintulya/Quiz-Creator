@@ -25,6 +25,13 @@ export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEma
       return;
     }
 
+    // Standard email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
     setLoading(true);
     try {
       await sendPasswordResetEmail(cleanEmail);
@@ -60,7 +67,7 @@ export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEma
           className="btn-ghost text-xs -ml-2 flex items-center gap-1.5 text-[#8d877c] hover:text-white"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Sign In</span>
+          <span>Back to Login</span>
         </button>
 
         {isSuccess ? (
@@ -75,13 +82,16 @@ export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEma
               <p className="text-xs sm:text-sm text-[#dedbd3] leading-relaxed">
                 If an account exists for this email, a password reset link has been sent.
               </p>
+              <p className="text-xs text-[#a39e94] pt-1 leading-relaxed">
+                Check your spam or junk folder if you don't see the email.
+              </p>
             </div>
 
             <div className="p-3.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-[#dedbd3] text-left space-y-1.5">
               <p className="font-semibold text-caramel-400">Next Steps:</p>
               <ol className="list-decimal list-inside space-y-1 text-[11px] text-[#a39e94]">
-                <li>Check your inbox (and spam or promotions folder).</li>
-                <li>Click the reset link in the email.</li>
+                <li>Open your email on any device.</li>
+                <li>Click the reset link within 5 minutes.</li>
                 <li>Set your new secure password.</li>
               </ol>
             </div>
@@ -91,7 +101,7 @@ export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEma
                 onClick={handleBackToLogin}
                 className="btn-primary w-full py-2.5 text-sm font-bold flex items-center justify-center gap-2"
               >
-                <span>Return to Login</span>
+                <span>Back to Login</span>
               </button>
             </div>
           </div>
@@ -104,7 +114,7 @@ export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEma
               </div>
               <h1 className="text-2xl font-extrabold text-white">Forgot Password?</h1>
               <p className="text-xs sm:text-sm text-[#a39e94] max-w-xs mx-auto leading-relaxed">
-                Enter your email address and we'll send you a link to reset your password.
+                Enter the email associated with your account and we'll send you a password reset link.
               </p>
             </div>
 
@@ -118,7 +128,7 @@ export default function ForgotPasswordPage({ onNavigate, onOpenLogin, prefillEma
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[#a39e94] mb-1.5">
-                  Email Address
+                  Email
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#797368]" />

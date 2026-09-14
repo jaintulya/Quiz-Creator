@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import {
   Lock, KeyRound, Eye, EyeOff, CheckCircle2, AlertTriangle,
-  ArrowRight, ShieldCheck, RefreshCw, LogIn
+  ArrowRight, ShieldCheck, RefreshCw, LogIn, Clock
 } from 'lucide-react';
 import { supabase } from '../services/supabase.js';
 
 export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
   const [checkingSession, setCheckingSession] = useState(true);
   const [hasValidSession, setHasValidSession] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
+  const [isAlreadyUsed, setIsAlreadyUsed] = useState(false);
 
   // Form states
   const [password, setPassword] = useState('');
@@ -23,10 +25,15 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
 
     const hash = window.location.hash || '';
     const search = window.location.search || '';
-    const hasRecoveryMarker =
-      hash.includes('type=recovery') ||
-      search.includes('type=recovery') ||
-      search.includes('code=');
+
+    // Provider error indicators
+    const isOtpExpired =
+      hash.includes('otp_expired') ||
+      search.includes('otp_expired') ||
+      hash.includes('token_expired') ||
+      search.includes('token_expired') ||
+      hash.includes('Email+link+is+invalid+or+has+expired') ||
+      search.includes('Email+link+is+invalid+or+has+expired');
 
     const hasErrorParam =
       hash.includes('error=') ||
@@ -36,7 +43,20 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
       hash.includes('error_description=') ||
       search.includes('error_description=');
 
-    // If an error is present or no recovery marker exists, immediately fail
+    const hasRecoveryMarker =
+      hash.includes('type=recovery') ||
+      search.includes('type=recovery') ||
+      search.includes('code=');
+
+    // 1. If provider reports expired link in URL, show expired state
+    if (isOtpExpired) {
+      setIsExpired(true);
+      setHasValidSession(false);
+      setCheckingSession(false);
+      return () => { isMounted = false; };
+    }
+
+    // 2. If provider reports other error or no recovery marker exists, fail immediately
     if (hasErrorParam || !hasRecoveryMarker) {
       setHasValidSession(false);
       setCheckingSession(false);
@@ -46,9 +66,18 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
     const acceptRecovery = (session) => {
       if (!isMounted) return;
       if (session) {
+        // Enforce 5-minute validity: check if session has already expired
+        if (session.expires_at && Math.floor(Date.now() / 1000) > session.expires_at) {
+          setIsExpired(true);
+          setHasValidSession(false);
+          setCheckingSession(false);
+          return;
+        }
+
         setHasValidSession(true);
         setCheckingSession(false);
-        // Strip the recovery code/hash from the address bar
+
+        // Strip the recovery tokens from the address bar for security and replay safety
         try {
           window.history.replaceState({}, '', window.location.pathname);
         } catch { /* history unavailable */ }
@@ -58,7 +87,7 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
       }
     };
 
-    // 1. Listen for Supabase PASSWORD_RECOVERY event
+    // 3. Listen for Supabase PASSWORD_RECOVERY event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
       if (event === 'PASSWORD_RECOVERY') {
@@ -66,7 +95,7 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
       }
     });
 
-    // 2. Also check if the recovery session was already resolved
+    // 4. Verify existing session if already resolved
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!isMounted) return;
       if (session && hasRecoveryMarker) {
@@ -82,7 +111,7 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
       }
     });
 
-    // 3. Safety timeout if recovery session cannot be verified within 4s
+    // 5. Safety timeout if recovery session cannot be verified within 4s
     const timer = setTimeout(() => {
       if (isMounted) {
         setCheckingSession(false);
@@ -101,38 +130,61 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
     setError('');
 
     if (!password) {
-      setError('Please enter a new password.');
+      setError('Password is required.');
       return;
     }
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+      setError('Password must be at least 6 characters.');
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match. Please verify and try again.');
+      setError('Passwords do not match.');
       return;
     }
 
     setLoading(true);
     try {
-      // Final check: valid session must be active
+      // Re-verify that valid recovery context is active before attempting update
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session?.user) {
-        throw new Error('Your reset session is no longer valid. Please request a new reset link.');
+        setIsExpired(true);
+        setHasValidSession(false);
+        throw new Error('Your password reset link has expired or is no longer valid.');
       }
 
-      // Update password for the currently verified recovery session user
+      // Check 5-minute validity threshold
+      if (session.expires_at && Math.floor(Date.now() / 1000) > session.expires_at) {
+        setIsExpired(true);
+        setHasValidSession(false);
+        throw new Error('Your password reset link has expired.');
+      }
+
+      // Call Supabase provider's secure password update API
       const { error: updateError } = await supabase.auth.updateUser({
         password: password.trim(),
       });
-      if (updateError) throw updateError;
 
-      // Safely sign out the recovery session locally on this device
+      if (updateError) {
+        const msg = updateError.message || '';
+        if (msg.toLowerCase().includes('expired') || msg.toLowerCase().includes('otp')) {
+          setIsExpired(true);
+          setHasValidSession(false);
+          throw new Error('Your password reset link has expired.');
+        }
+        if (msg.toLowerCase().includes('used') || msg.toLowerCase().includes('consumed')) {
+          setIsAlreadyUsed(true);
+          setHasValidSession(false);
+          throw new Error('This password reset link has already been used or is no longer valid.');
+        }
+        throw updateError;
+      }
+
+      // Invalidate the recovery session on this device so it cannot be reused
       await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
 
       setIsSuccess(true);
     } catch (err) {
-      setError(err.message || 'Failed to update password. Your reset link may have expired.');
+      setError(err.message || 'Your password reset link has expired or is no longer valid.');
     } finally {
       setLoading(false);
     }
@@ -163,21 +215,21 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
     );
   }
 
-  // ── Security Check Failed: Invalid or Expired Reset Link ──
-  if (!hasValidSession && !isSuccess) {
+  // ── State: Expired Reset Link ──
+  if (isExpired && !isSuccess) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center px-4 sm:px-6 py-12 animate-fade-in">
         <div className="w-full max-w-md glass-card p-6 sm:p-8 border-white/10 shadow-2xl text-center space-y-6">
-          <div className="w-16 h-16 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
-            <AlertTriangle className="w-8 h-8" />
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+            <Clock className="w-8 h-8" />
           </div>
 
           <div className="space-y-2">
             <h1 className="text-2xl font-extrabold text-white">
-              Invalid or Expired Reset Link
+              Your password reset link has expired.
             </h1>
             <p className="text-xs sm:text-sm text-[#a39e94] leading-relaxed">
-              This password reset link is invalid or has expired.
+              Password reset links are only valid for 5 minutes for your account's security. Please request a new reset link.
             </p>
           </div>
 
@@ -188,13 +240,90 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
               id="request-new-reset-btn"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>Request New Reset Link</span>
+              <span>Request a new reset link</span>
             </button>
             <button
               onClick={handleGoToLogin}
               className="btn-ghost w-full py-2 text-xs text-[#8d877c] hover:text-white"
             >
-              Return to Login
+              Back to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── State: Already Used Reset Link ──
+  if (isAlreadyUsed && !isSuccess) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4 sm:px-6 py-12 animate-fade-in">
+        <div className="w-full max-w-md glass-card p-6 sm:p-8 border-white/10 shadow-2xl text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl font-extrabold text-white">
+              Link Already Used
+            </h1>
+            <p className="text-xs sm:text-sm text-[#a39e94] leading-relaxed">
+              This password reset link has already been used or is no longer valid.
+            </p>
+          </div>
+
+          <div className="space-y-2.5 pt-2">
+            <button
+              onClick={() => onNavigate && onNavigate('/forgot-password')}
+              className="btn-primary w-full py-2.5 text-sm font-bold flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Request a new reset link</span>
+            </button>
+            <button
+              onClick={handleGoToLogin}
+              className="btn-ghost w-full py-2 text-xs text-[#8d877c] hover:text-white"
+            >
+              Back to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Security Check Failed: Invalid or Expired Reset Link / Direct Access ──
+  if (!hasValidSession && !isSuccess) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4 sm:px-6 py-12 animate-fade-in">
+        <div className="w-full max-w-md glass-card p-6 sm:p-8 border-white/10 shadow-2xl text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl font-extrabold text-white">
+              Invalid or expired password reset link.
+            </h1>
+            <p className="text-xs sm:text-sm text-[#a39e94] leading-relaxed">
+              This password reset link is invalid or has expired. Please request a new reset link.
+            </p>
+          </div>
+
+          <div className="space-y-2.5 pt-2">
+            <button
+              onClick={() => onNavigate && onNavigate('/forgot-password')}
+              className="btn-primary w-full py-2.5 text-sm font-bold flex items-center justify-center gap-2"
+              id="request-new-reset-btn"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Request a new reset link</span>
+            </button>
+            <button
+              onClick={handleGoToLogin}
+              className="btn-ghost w-full py-2 text-xs text-[#8d877c] hover:text-white"
+            >
+              Back to Login
             </button>
           </div>
         </div>
@@ -213,7 +342,7 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
 
           <div className="space-y-2">
             <h1 className="text-2xl font-extrabold text-white">
-              Password updated successfully.
+              Your password has been updated successfully.
             </h1>
             <p className="text-xs sm:text-sm text-[#dedbd3] leading-relaxed">
               You can now log in with your new password.
@@ -227,7 +356,7 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
               id="reset-success-go-to-login"
             >
               <LogIn className="w-4 h-4" />
-              <span>Go to Login</span>
+              <span>Back to Login</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
@@ -337,7 +466,7 @@ export default function ResetPasswordPage({ onNavigate, onOpenLogin }) {
             onClick={handleGoToLogin}
             className="text-xs text-[#8d877c] hover:text-white"
           >
-            Cancel and return to Login
+            Back to Login
           </button>
         </div>
       </div>
