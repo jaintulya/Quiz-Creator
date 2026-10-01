@@ -1,5 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured, getSiteUrl } from '../services/supabase.js';
+import {
+  registerWithUsername,
+  loginWithUsername,
+  changeUserPassword,
+  updateUserProfile as updateAccountProfile,
+  getActiveUserSession,
+  clearActiveUserSession,
+} from '../services/authService.js';
 
 const AuthContext = createContext(null);
 
@@ -7,51 +15,73 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(() => {
+    try {
+      return localStorage.getItem('quizcraft_guest_mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [lastAuthEvent, setLastAuthEvent] = useState(null);
-  const [isGuest, setIsGuest] = useState(
-    () => typeof window !== 'undefined' && localStorage.getItem('quizcraft_guest_mode') === 'true'
-  );
 
+  // Initialize auth state: Check Username Session first, then Supabase (Google) Session
   useEffect(() => {
+    let mounted = true;
+
+    // 1. Check if user is logged in via Username + Password
+    const savedUser = getActiveUserSession();
+    if (savedUser) {
+      if (mounted) {
+        setUser(savedUser);
+        setSession({ user: savedUser });
+        setIsGuest(false);
+        setLoading(false);
+      }
+      return;
+    }
+
+    // 2. If not, check Supabase (Google OAuth session)
     if (!isSupabaseConfigured) {
-      setLoading(false);
+      if (mounted) setLoading(false);
       return;
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setSession(session);
-        setUser(session.user);
+      if (!mounted) return;
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        setIsGuest(false);
       }
       setLoading(false);
     }).catch(() => {
-      setLoading(false);
+      if (mounted) setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
+      (event, session) => {
+        if (!mounted) return;
         setLastAuthEvent(event);
-        if (event === 'PASSWORD_RECOVERY') {
-          setSession(newSession);
-          setUser(null);
-          setLoading(false);
-          return;
-        }
-        setSession(newSession);
-        if (newSession?.user) {
-          setUser(newSession.user);
-        } else if (!newSession) {
-          setUser(null);
+        // Only override if not in a custom username session
+        const currentCustom = getActiveUserSession();
+        if (!currentCustom) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            setIsGuest(false);
+          }
         }
         setLoading(false);
       }
     );
 
     return () => {
+      mounted = false;
       subscription?.unsubscribe();
     };
   }, []);
 
+  // ── Google OAuth ──
   const signInWithGoogle = async () => {
     if (!isSupabaseConfigured) {
       throw new Error('Supabase is not configured yet.');
@@ -63,59 +93,37 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   };
 
-  // Helper to convert username to synthetic email
-  const getSyntheticEmail = (username) => {
-    return `${btoa(encodeURIComponent(username.trim().toLowerCase())).replace(/=/g, '')}@quizcraft.local`;
-  };
-
-  // Username/Password Registration
+  // ── Username/Password Registration ──
   const signUpWithUsername = async (username, password, course) => {
-    if (!isSupabaseConfigured) throw new Error('Supabase is not configured yet.');
-    
-    const syntheticEmail = getSyntheticEmail(username);
-    const { data, error } = await supabase.auth.signUp({
-      email: syntheticEmail,
-      password,
-      options: {
-        data: {
-          username: username.trim(),
-          full_name: username.trim(),
-          display_name: username.trim(),
-          course: course?.trim() || '',
-        }
-      }
-    });
-
-    if (error) {
-      if (error.message.includes('already registered')) {
-        throw new Error('Username already exists. Please choose another username.');
-      }
-      throw error;
-    }
-    return data;
+    // Register through dedicated secure auth service
+    const newUser = await registerWithUsername(username, password, course);
+    setUser(newUser);
+    setSession({ user: newUser });
+    setIsGuest(false);
+    try {
+      localStorage.removeItem('quizcraft_guest_mode');
+    } catch {}
+    return newUser;
   };
 
-  // Username/Password Login
+  // ── Username/Password Login ──
   const signInWithUsername = async (username, password) => {
-    if (!isSupabaseConfigured) throw new Error('Supabase is not configured yet.');
-    
-    const syntheticEmail = getSyntheticEmail(username);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: syntheticEmail,
-      password,
-    });
-
-    if (error) {
-      if (error.message.includes('Invalid login credentials')) {
-        throw new Error('Incorrect username or password.');
-      }
-      throw error;
-    }
-    return data;
+    const loggedUser = await loginWithUsername(username, password);
+    setUser(loggedUser);
+    setSession({ user: loggedUser });
+    setIsGuest(false);
+    try {
+      localStorage.removeItem('quizcraft_guest_mode');
+    } catch {}
+    return loggedUser;
   };
 
+  // ── Guest Mode ──
   const loginAsGuest = () => {
     localStorage.setItem('quizcraft_guest_mode', 'true');
+    clearActiveUserSession();
+    setUser(null);
+    setSession(null);
     setIsGuest(true);
   };
 
@@ -124,10 +132,11 @@ export function AuthProvider({ children }) {
     setIsGuest(false);
   };
 
-
-
-  // Sign Out
+  // ── Sign Out ──
   const signOut = async (options = { scope: 'local' }) => {
+    clearActiveUserSession();
+    exitGuestMode();
+
     if (isSupabaseConfigured) {
       try {
         await supabase.auth.signOut(options);
@@ -135,11 +144,7 @@ export function AuthProvider({ children }) {
         // ignore
       }
     }
-    // Clear cached user quizzes so User A's data never leaks to User B
-    try {
-      localStorage.removeItem('quizcraft_quizzes');
-    } catch { /* storage unavailable */ }
-    exitGuestMode();
+
     setUser(null);
     setSession(null);
   };
@@ -148,6 +153,7 @@ export function AuthProvider({ children }) {
   const getUserDisplayName = (u = user) => {
     if (!u) return '';
     return (
+      u.username ||
       u.user_metadata?.full_name ||
       u.user_metadata?.name ||
       u.user_metadata?.display_name ||
@@ -159,14 +165,25 @@ export function AuthProvider({ children }) {
   // Helper: get user course
   const getUserCourse = (u = user) => {
     if (!u) return '';
-    return u.user_metadata?.course || '';
+    return u.course || u.user_metadata?.course || '';
   };
 
   // Update user profile metadata (name, course)
   const updateProfile = async ({ full_name, course }) => {
+    if (!user) throw new Error('User not authenticated.');
+
+    if (user.authType === 'username') {
+      const updated = await updateAccountProfile(user.id, { full_name, course });
+      if (updated) {
+        setUser(updated);
+      }
+      return updated;
+    }
+
     if (!isSupabaseConfigured) {
       throw new Error('Supabase is not configured yet.');
     }
+
     const { data, error } = await supabase.auth.updateUser({
       data: {
         full_name: full_name?.trim(),
@@ -184,10 +201,21 @@ export function AuthProvider({ children }) {
 
   // Change Password
   const updatePassword = async (currentPassword, newPassword) => {
-    if (!isSupabaseConfigured) throw new Error('Supabase is not configured yet.');
     if (!user) throw new Error('You must be logged in to change your password.');
 
-    // Verify current password first by re-authenticating
+    // If username user
+    if (user.authType === 'username') {
+      return await changeUserPassword(user.id, currentPassword, newPassword);
+    }
+
+    // If Google OAuth user
+    if (user.app_metadata?.provider === 'google' || user.identities?.some((id) => id.provider === 'google')) {
+      throw new Error('This account signs in with Google. Passwords are managed in your Google Account.');
+    }
+
+    // If Supabase native email user
+    if (!isSupabaseConfigured) throw new Error('Supabase is not configured yet.');
+
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: user.email,
       password: currentPassword,
@@ -197,7 +225,6 @@ export function AuthProvider({ children }) {
       throw new Error('Current password is incorrect.');
     }
 
-    // Now update to the new password
     const { error: updateError } = await supabase.auth.updateUser({
       password: newPassword,
     });
@@ -206,8 +233,6 @@ export function AuthProvider({ children }) {
       throw new Error(updateError.message || 'Failed to update password.');
     }
   };
-
-
 
   const value = {
     user,

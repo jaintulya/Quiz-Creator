@@ -19,8 +19,12 @@ export default function UserMenu({ onOpenAuth, onNavigate }) {
   }
 
   const name    = isGuest ? 'Guest User' : getUserDisplayName();
-  const email   = isGuest ? 'Guest Mode (Local Only)' : (user?.email || '');
-  const initial = isGuest ? 'G' : (name.charAt(0).toUpperCase() || email.charAt(0).toUpperCase() || 'U');
+  const sublabel = isGuest
+    ? 'Guest Mode (Local Only)'
+    : user?.authType === 'username'
+      ? (user?.course ? `Course: ${user.course}` : 'Registered Account')
+      : (user?.email || '');
+  const initial = isGuest ? 'G' : (name.charAt(0).toUpperCase() || 'U');
 
   const handleSignOut = async () => {
     setIsOpen(false);
@@ -57,7 +61,7 @@ export default function UserMenu({ onOpenAuth, onNavigate }) {
             {/* User info */}
             <div className="px-2.5 py-2 border-b border-white/[0.08] mb-1">
               <p className="text-xs font-bold text-white truncate">{name}</p>
-              <p className="text-[10px] text-slate-400 truncate">{email}</p>
+              <p className="text-[10px] text-slate-400 truncate">{sublabel}</p>
             </div>
 
             {/* Profile or Sign in for Guest */}

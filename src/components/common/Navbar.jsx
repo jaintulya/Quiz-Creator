@@ -18,41 +18,46 @@ export default function Navbar({ currentPage, onNavigate, onOpenAuth }) {
     onNavigate(hasAccess ? 'dashboard' : 'home');
   };
 
-  const navLink = (page, label, Icon) => (
-    <button
-      onClick={() => onNavigate(page)}
-      className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200
-        ${currentPage === page
-          ? 'bg-[#29241f] text-caramel-400 border border-white/10 shadow-sm'
-          : 'text-[#9e988e] hover:text-white hover:bg-white/[0.04]'
+  const navLink = (page, label, Icon) => {
+    const active = currentPage === page;
+    return (
+      <button
+        key={page}
+        onClick={() => onNavigate(page)}
+        className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-semibold transition-all duration-200 ${
+          active
+            ? 'text-[--amber] bg-[--amber]/8'
+            : 'text-[--text-2] hover:text-white hover:bg-white/[0.05]'
         }`}
-    >
-      <Icon className="w-4 h-4" />
-      <span className="hidden sm:inline">{label}</span>
-    </button>
-  );
+      >
+        <Icon className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">{label}</span>
+        {active && (
+          <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[2px] rounded-full bg-[--amber]" />
+        )}
+      </button>
+    );
+  };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0f0e0d]/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-white/[0.07]" style={{ background: 'rgba(9,8,7,0.88)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
 
-        {/* Brand Logo */}
-        <button
-          onClick={handleBrandClick}
-          className="flex items-center gap-2.5 group text-left focus:outline-none shrink-0"
-        >
-          <div className="w-9 h-9 rounded-xl bg-[#2a2216] border border-[#f5ba72]/30 flex items-center justify-center shadow-caramel-glow group-hover:scale-105 transition-all duration-300">
-            <Brain className="w-5 h-5 text-caramel-500 transform group-hover:rotate-6 transition-transform" />
+        {/* Brand */}
+        <button onClick={handleBrandClick} className="flex items-center gap-2.5 group focus:outline-none shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-[#f5ba72]/10 border border-[#f5ba72]/25 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-caramel-glow">
+            <Brain className="w-4 h-4 text-[--amber] transition-transform duration-300 group-hover:rotate-12" />
           </div>
-          <span className="font-bold text-lg text-white group-hover:text-caramel-400 transition-colors">
-            QuizCraft
-          </span>
+          <div className="flex items-baseline gap-1">
+            <span className="font-black text-[15px] text-white tracking-tight group-hover:text-[--amber] transition-colors">QuizCraft</span>
+            {isGuest && (
+              <span className="text-[9px] font-bold text-[--text-3] uppercase tracking-widest border border-white/10 px-1.5 py-0.5 rounded-full">Guest</span>
+            )}
+          </div>
         </button>
 
-        {/* Nav Links + Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-
-          {/* Authenticated / Guest nav links */}
+        {/* Nav links + actions */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {hasAccess && (
             <>
               {navLink('dashboard', 'Home', LayoutDashboard)}
@@ -60,19 +65,18 @@ export default function Navbar({ currentPage, onNavigate, onOpenAuth }) {
             </>
           )}
 
-          {/* User Auth Menu */}
           <UserMenu onOpenAuth={onOpenAuth} onNavigate={onNavigate} />
 
-          {/* Create Quiz */}
           {hasAccess && (
             <button
               id="nav-create-btn"
               onClick={handleCreateClick}
-              className="btn-primary py-2 px-3 sm:px-4 text-xs sm:text-sm font-bold flex items-center gap-1.5 shrink-0"
+              className="btn-primary py-2 px-3 sm:px-4 text-[12px] sm:text-sm font-bold flex items-center gap-1.5 ml-1"
               title="Create a new quiz"
             >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Create Quiz</span>
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+              <span className="hidden sm:inline">Create Quiz</span>
+              <span className="sm:hidden">New</span>
             </button>
           )}
         </div>

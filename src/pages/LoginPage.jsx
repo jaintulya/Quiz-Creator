@@ -153,7 +153,7 @@ export default function LoginPage({ onNavigate, promptMessage = '' }) {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. rahul@007"
+                  placeholder="user@1234"
                   className="input-field pl-10 text-sm"
                   required
                 />

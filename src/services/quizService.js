@@ -5,53 +5,55 @@ import {
   updateQuiz as updateLocalQuiz,
   updateQuizTitle as updateLocalQuizTitle,
   deleteQuiz as deleteLocalQuiz,
+  getStorageKey,
 } from './storage.js';
 
-// ─── Fetch Quizzes (Supabase — per user) ────────────────────────────────────
+// ─── Fetch Quizzes (Supabase with user-scoped local fallback) ───────────────
 export async function fetchAllQuizzes(userId = null) {
-  if (!isSupabaseConfigured || !userId) {
-    return [];
+  // If no user (e.g. guest), load guest/local quizzes
+  if (!userId) {
+    return getLocalQuizzes(null);
   }
 
-  try {
-    const { data, error } = await supabase
-      .from('quizzes')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+  // If Supabase is available, try fetching cloud quizzes
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('quizzes')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.warn('Supabase fetch error:', error.message);
-      return [];
+      if (!error && data && data.length > 0) {
+        const mapped = data.map((item) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || '',
+          category: item.category || 'General',
+          questions: item.questions,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
+          userId: item.user_id,
+          isCloud: true,
+        }));
+        // Cache per user
+        try {
+          localStorage.setItem(getStorageKey(userId), JSON.stringify(mapped));
+        } catch {}
+        return mapped;
+      }
+    } catch (err) {
+      console.warn('Cloud fetch quizzes skipped:', err);
     }
-
-    if (data) {
-      const mapped = data.map((item) => ({
-        id: item.id,
-        title: item.title,
-        description: item.description || '',
-        category: item.category || 'General',
-        questions: item.questions,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-        userId: item.user_id,
-        isCloud: true,
-      }));
-      // Cache locally for offline resilience
-      localStorage.setItem('quizcraft_quizzes', JSON.stringify(mapped));
-      return mapped;
-    }
-
-    return [];
-  } catch (err) {
-    console.error('Failed to fetch quizzes from Supabase:', err);
-    return getLocalQuizzes();
   }
+
+  // Return isolated local quizzes for this user
+  return getLocalQuizzes(userId);
 }
 
-// ─── Save New Quiz (Cloud + Local) ──────────────────────────────────────────
+// ─── Save New Quiz (Local + Cloud) ──────────────────────────────────────────
 export async function saveNewQuiz(title, questions, userId = null, category = 'General', description = '') {
-  const localQuiz = saveLocalQuiz(title, questions);
+  const localQuiz = saveLocalQuiz(title, questions, userId);
 
   if (!isSupabaseConfigured || !userId) {
     return localQuiz;
@@ -69,37 +71,35 @@ export async function saveNewQuiz(title, questions, userId = null, category = 'G
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('quizzes')
       .insert([payload])
       .select()
       .single();
 
-    if (error) {
-      console.warn('Cloud insert warning:', error.message);
-      return localQuiz;
+    if (!error) {
+      return {
+        ...localQuiz,
+        isCloud: true,
+      };
     }
-
-    return {
-      ...localQuiz,
-      isCloud: true,
-    };
   } catch (err) {
-    console.warn('Error saving quiz to cloud:', err);
-    return localQuiz;
+    console.warn('Cloud insert skipped:', err);
   }
+
+  return localQuiz;
 }
 
 // ─── Update Existing Quiz ──────────────────────────────────────────────────
 export async function updateExistingQuiz(id, title, questions, userId = null) {
-  const localQuiz = updateLocalQuiz(id, title, questions);
+  const localQuiz = updateLocalQuiz(id, title, questions, userId);
 
   if (!isSupabaseConfigured || !userId) {
     return localQuiz;
   }
 
   try {
-    const { error } = await supabase
+    await supabase
       .from('quizzes')
       .update({
         title: title.trim(),
@@ -107,12 +107,8 @@ export async function updateExistingQuiz(id, title, questions, userId = null) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', id);
-
-    if (error) {
-      console.warn('Could not update quiz on cloud:', error.message);
-    }
   } catch (err) {
-    console.warn('Cloud update failed:', err);
+    console.warn('Cloud update skipped:', err);
   }
 
   return localQuiz;
@@ -120,7 +116,7 @@ export async function updateExistingQuiz(id, title, questions, userId = null) {
 
 // ─── Update Quiz Title Only ────────────────────────────────────────────────
 export async function updateTitleOnly(id, newTitle, userId = null) {
-  const localQuiz = updateLocalQuizTitle(id, newTitle);
+  const localQuiz = updateLocalQuizTitle(id, newTitle, userId);
 
   if (!isSupabaseConfigured || !userId) {
     return localQuiz;
@@ -135,7 +131,7 @@ export async function updateTitleOnly(id, newTitle, userId = null) {
       })
       .eq('id', id);
   } catch (err) {
-    console.warn('Cloud title update failed:', err);
+    console.warn('Cloud title update skipped:', err);
   }
 
   return localQuiz;
@@ -143,23 +139,19 @@ export async function updateTitleOnly(id, newTitle, userId = null) {
 
 // ─── Delete Quiz ───────────────────────────────────────────────────────────
 export async function deleteQuizRecord(id, userId = null) {
-  deleteLocalQuiz(id);
+  deleteLocalQuiz(id, userId);
 
   if (!isSupabaseConfigured || !userId) {
     return;
   }
 
   try {
-    const { error } = await supabase
+    await supabase
       .from('quizzes')
       .delete()
       .eq('id', id);
-
-    if (error) {
-      console.warn('Cloud delete warning:', error.message);
-    }
   } catch (err) {
-    console.warn('Failed to delete quiz from cloud:', err);
+    console.warn('Cloud delete skipped:', err);
   }
 }
 
@@ -167,7 +159,7 @@ export async function deleteQuizRecord(id, userId = null) {
 export async function syncLocalQuizzesToCloud(userId, quizzes = null) {
   if (!isSupabaseConfigured || !userId) return;
 
-  const items = quizzes || getLocalQuizzes();
+  const items = quizzes || getLocalQuizzes(userId);
   if (!items || items.length === 0) return;
 
   try {
@@ -182,14 +174,10 @@ export async function syncLocalQuizzesToCloud(userId, quizzes = null) {
       updated_at: q.updatedAt || new Date().toISOString(),
     }));
 
-    const { error } = await supabase
+    await supabase
       .from('quizzes')
       .upsert(payloads, { onConflict: 'id' });
-
-    if (error) {
-      console.warn('Sync to cloud error:', error.message);
-    }
   } catch (err) {
-    console.warn('Sync failed:', err);
+    console.warn('Sync skipped:', err);
   }
 }

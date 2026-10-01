@@ -228,13 +228,17 @@ export default function ProfilePage({ onNavigate }) {
           </form>
         )}
 
-        {/* User Details (Without Auth Method) */}
+        {/* User Details */}
         <div className="space-y-3 pt-2 border-t border-white/[0.08]">
           {[
-            { icon: User,       label: 'Full Name',    value: name },
-            { icon: Mail,       label: 'Email',        value: email },
-            { icon: BookMarked, label: 'Course',      value: course || 'Not set' },
-            memberSince ? { icon: Trophy, label: 'Member Since', value: memberSince } : null,
+            user?.authType === 'username'
+              ? { icon: User, label: 'Username', value: user.username || name }
+              : { icon: User, label: 'Full Name', value: name },
+            !isGoogle && user?.authType === 'username'
+              ? null
+              : { icon: Mail, label: 'Email', value: email },
+            { icon: BookMarked, label: 'Selected Course', value: course || 'Not set' },
+            memberSince ? { icon: Trophy, label: 'Created Account Date', value: memberSince } : null,
           ].filter(Boolean).map((row) => {
             const Icon = row.icon;
             return (
