@@ -92,18 +92,25 @@ export function isUsernameTaken(username) {
  */
 export function formatUserSession(account) {
   if (!account) return null;
+  const rawFullName = account.fullName || account.full_name || '';
+  const fullName = typeof rawFullName === 'string' ? rawFullName.trim() : '';
+  const effectiveDisplayName = fullName || account.username;
+
   return {
     id: account.id,
     email: `${account.normalizedUsername}@quizcraft.internal`,
     username: account.username,
+    fullName: fullName,
+    displayName: effectiveDisplayName,
     normalizedUsername: account.normalizedUsername,
     course: account.course || '',
     created_at: account.createdAt,
     authType: 'username',
     user_metadata: {
       username: account.username,
-      full_name: account.username,
-      display_name: account.username,
+      full_name: fullName,
+      display_name: effectiveDisplayName,
+      name: effectiveDisplayName,
       course: account.course || '',
     },
     app_metadata: {
@@ -232,13 +239,21 @@ export async function changeUserPassword(userId, currentPassword, newPassword) {
 /**
  * Update course or profile details for username account
  */
-export async function updateUserProfile(userId, { course, full_name }) {
+export async function updateUserProfile(userId, { course, full_name, fullName }) {
   const accounts = getAllRegisteredAccounts();
   const idx = accounts.findIndex((acc) => acc.id === userId);
   if (idx === -1) return null;
 
-  if (course !== undefined) accounts[idx].course = course.trim();
-  if (full_name !== undefined && full_name.trim()) accounts[idx].username = full_name.trim();
+  if (course !== undefined) {
+    accounts[idx].course = course.trim();
+  }
+
+  // Update fullName only - username is permanent and cannot be edited
+  const nameToSet = fullName !== undefined ? fullName : full_name;
+  if (nameToSet !== undefined) {
+    accounts[idx].fullName = nameToSet.trim();
+  }
+
   accounts[idx].updatedAt = new Date().toISOString();
   saveAllRegisteredAccounts(accounts);
 

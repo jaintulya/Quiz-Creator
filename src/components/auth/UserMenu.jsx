@@ -18,11 +18,14 @@ export default function UserMenu({ onOpenAuth, onNavigate }) {
     );
   }
 
-  const name    = isGuest ? 'Guest User' : getUserDisplayName();
+  const name = isGuest ? 'Guest User' : getUserDisplayName();
+  const hasCustomName = Boolean(user?.fullName || user?.user_metadata?.full_name);
   const sublabel = isGuest
     ? 'Guest Mode (Local Only)'
     : user?.authType === 'username'
-      ? (user?.course ? `Course: ${user.course}` : 'Registered Account')
+      ? (hasCustomName
+          ? `@${user?.username || ''} • ${user?.course || 'Student'}`
+          : (user?.course ? `Course: ${user.course}` : 'Registered Account'))
       : (user?.email || '');
   const initial = isGuest ? 'G' : (name.charAt(0).toUpperCase() || 'U');
 

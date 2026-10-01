@@ -1,23 +1,51 @@
 import { useState, useEffect } from 'react';
 import {
   User, Mail, BookOpen, Trophy, LogOut,
-  CheckCircle2, BookMarked, KeyRound, Save, X, AlertCircle, Eye, EyeOff
+  CheckCircle2, BookMarked, KeyRound, Save, X, AlertCircle, Eye, EyeOff, Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { fetchAllQuizzes } from '../services/quizService.js';
 
+const COURSE_OPTIONS = [
+  'BCA', 'MCA', 'BCS', 'BECE', 'B.Tech (CS)', 'B.Tech (EC)', 'B.Tech (IT)',
+  'B.Sc (CS)', 'B.Sc (IT)', 'MBA', 'BBA', 'BA', 'B.Com', 'Other',
+];
+
 export default function ProfilePage({ onNavigate }) {
-  const { user, isGuest, signOut, getUserDisplayName, getUserCourse, updateProfile, updatePassword } = useAuth();
+  const {
+    user,
+    isGuest,
+    signOut,
+    getUserDisplayName,
+    getUserFullName,
+    getUserUsername,
+    getUserCourse,
+    updateProfile,
+    updatePassword,
+  } = useAuth();
+
   const [quizzes, setQuizzes] = useState([]);
   const [loadingQuizzes, setLoadingQuizzes] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
 
+  // User Identifiers
+  const displayName = getUserDisplayName();
+  const fullName    = getUserFullName ? getUserFullName() : (user?.fullName || '');
+  const username    = getUserUsername ? getUserUsername() : (user?.username || '');
+  const course      = getUserCourse();
+  const email       = user?.email || '';
+  const initial     = displayName.charAt(0).toUpperCase() || 'U';
+
+  const isGoogle = user?.app_metadata?.provider === 'google' ||
+    user?.identities?.some((id) => id.provider === 'google');
+
   // Edit Profile state
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editCourse, setEditCourse] = useState('');
+  const [editFullName, setEditFullName] = useState(fullName);
+  const [editCourse, setEditCourse] = useState(course);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
+
   // Change Password state
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -26,18 +54,11 @@ export default function ProfilePage({ onNavigate }) {
   const [showPassword, setShowPassword] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
-  const name   = getUserDisplayName();
-  const course = getUserCourse();
-  const email  = user?.email || '';
-  const initial = name.charAt(0).toUpperCase() || email.charAt(0).toUpperCase() || 'U';
-
-  const isGoogle = user?.app_metadata?.provider === 'google' ||
-    user?.identities?.some((id) => id.provider === 'google');
 
   useEffect(() => {
-    setEditName(name);
+    setEditFullName(fullName);
     setEditCourse(course);
-  }, [name, course]);
+  }, [fullName, course]);
 
   useEffect(() => {
     if (!user) return;
@@ -56,14 +77,10 @@ export default function ProfilePage({ onNavigate }) {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    if (!editName.trim()) {
-      setProfileMessage({ type: 'error', text: 'Name cannot be empty.' });
-      return;
-    }
     setProfileSaving(true);
     setProfileMessage({ type: '', text: '' });
     try {
-      await updateProfile({ full_name: editName, course: editCourse });
+      await updateProfile({ full_name: editFullName.trim(), course: editCourse });
       setProfileMessage({ type: 'success', text: 'Profile updated successfully!' });
       setIsEditingProfile(false);
     } catch (err) {
@@ -140,14 +157,21 @@ export default function ProfilePage({ onNavigate }) {
             </div>
 
             <div className="text-center sm:text-left space-y-1">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-white">{name}</h1>
-              {course && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#f5ba72]/15 border border-[#f5ba72]/25 text-[#f5ba72]">
-                  <BookOpen className="w-3 h-3" />
-                  {course}
-                </div>
-              )}
-              <div className="flex items-center gap-1.5 text-xs text-emerald-400">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-white">{displayName}</h1>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-0.5">
+                {course && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#f5ba72]/15 border border-[#f5ba72]/25 text-[#f5ba72]">
+                    <BookOpen className="w-3 h-3" />
+                    {course}
+                  </div>
+                )}
+                {user?.authType === 'username' && username && (
+                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-mono text-[#8d877c] bg-white/[0.04] border border-white/[0.08]">
+                    <span>@{username}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs text-emerald-400 pt-0.5">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>Verified Account</span>
               </div>
@@ -179,36 +203,65 @@ export default function ProfilePage({ onNavigate }) {
 
         {/* Inline Edit Profile Form */}
         {isEditingProfile && (
-          <form onSubmit={handleSaveProfile} className="p-4 rounded-xl bg-white/[0.04] border border-[#f5ba72]/30 space-y-4 animate-fade-in">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Update Profile Information</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-[#a39e94] block mb-1">Full Name *</label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  placeholder="Your full name"
-                  className="input-field text-xs sm:text-sm py-2 px-3 w-full"
-                  required
-                />
+          <form onSubmit={handleSaveProfile} className="p-4 sm:p-5 rounded-xl bg-white/[0.04] border border-[#f5ba72]/30 space-y-4 animate-fade-in">
+            <div className="flex items-center justify-between pb-2 border-b border-white/[0.08]">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">Update Profile Details</h3>
+              <span className="text-[10px] text-[#8d877c]">Username is fixed & cannot be edited</span>
+            </div>
+
+            {/* Read-Only Username Callout */}
+            {user?.authType === 'username' && (
+              <div className="p-3 rounded-xl bg-black/30 border border-white/[0.08] flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-[#8d877c] tracking-wider block">Username (Unique ID)</span>
+                  <span className="text-xs sm:text-sm font-mono text-[#f5ba72] font-semibold">@{username}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[10px] text-[#8d877c]">
+                  <Lock className="w-3 h-3 text-[#f5ba72]" />
+                  <span>Permanent ID</span>
+                </div>
               </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="text-xs text-[#a39e94] block mb-1">Course / Degree</label>
+                <label className="text-xs font-semibold text-[#a39e94] block mb-1">
+                  Full Name / Display Name
+                </label>
                 <input
                   type="text"
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  placeholder="e.g. Neev Jain"
+                  className="input-field text-xs sm:text-sm py-2 px-3 w-full"
+                />
+                <p className="text-[10px] text-[#8d877c] mt-1">
+                  This name will be shown on the website (Navbar, Dashboard, Results). If left blank, your username will be used.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-[#a39e94] block mb-1">Course / Program</label>
+                <select
                   value={editCourse}
                   onChange={(e) => setEditCourse(e.target.value)}
-                  placeholder="e.g. BCA, B.Tech, MCA"
-                  className="input-field text-xs sm:text-sm py-2 px-3 w-full"
-                />
+                  className="input-field text-xs sm:text-sm py-2 px-3 w-full appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>Select your course</option>
+                  {COURSE_OPTIONS.map((c) => (
+                    <option key={c} value={c} className="bg-[#1b1713] text-white">
+                      {c}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
+
+            <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setIsEditingProfile(false)}
-                className="btn-ghost py-1.5 px-3 text-xs"
+                className="btn-ghost py-1.5 px-3.5 text-xs"
               >
                 Cancel
               </button>
@@ -228,28 +281,45 @@ export default function ProfilePage({ onNavigate }) {
           </form>
         )}
 
-        {/* User Details */}
+        {/* User Details (Settings list) */}
         <div className="space-y-3 pt-2 border-t border-white/[0.08]">
           {[
             user?.authType === 'username'
-              ? { icon: User, label: 'Username', value: user.username || name }
-              : { icon: User, label: 'Full Name', value: name },
+              ? {
+                  icon: Lock,
+                  label: 'Username',
+                  value: `@${username}`,
+                  tag: 'Cannot be changed',
+                }
+              : null,
+            {
+              icon: User,
+              label: 'Display Name',
+              value: fullName ? fullName : `${username} (Default - edit profile to set)`,
+            },
             !isGoogle && user?.authType === 'username'
               ? null
               : { icon: Mail, label: 'Email', value: email },
             { icon: BookMarked, label: 'Selected Course', value: course || 'Not set' },
-            memberSince ? { icon: Trophy, label: 'Created Account Date', value: memberSince } : null,
+            memberSince ? { icon: Trophy, label: 'Account Created', value: memberSince } : null,
           ].filter(Boolean).map((row) => {
             const Icon = row.icon;
             return (
-              <div key={row.label} className="flex items-center gap-3 py-2.5 px-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                <div className="w-8 h-8 rounded-lg bg-[#f5ba72]/10 border border-[#f5ba72]/15 flex items-center justify-center shrink-0">
-                  <Icon className="w-4 h-4 text-[#f5ba72]" />
+              <div key={row.label} className="flex items-center justify-between py-2.5 px-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-[#f5ba72]/10 border border-[#f5ba72]/15 flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4 text-[#f5ba72]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold text-[#8d877c] uppercase tracking-wide">{row.label}</p>
+                    <p className="text-sm text-white font-medium truncate">{row.value}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold text-[#8d877c] uppercase tracking-wide">{row.label}</p>
-                  <p className="text-sm text-white font-medium truncate">{row.value}</p>
-                </div>
+                {row.tag && (
+                  <span className="text-[10px] font-medium text-[#8d877c] px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] shrink-0 ml-2">
+                    {row.tag}
+                  </span>
+                )}
               </div>
             );
           })}

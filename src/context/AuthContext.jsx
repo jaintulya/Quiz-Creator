@@ -149,17 +149,34 @@ export function AuthProvider({ children }) {
     setSession(null);
   };
 
-  // Helper: get display name from user metadata
+  // Helper: get display name (Full name if set, else fallback to username)
   const getUserDisplayName = (u = user) => {
     if (!u) return '';
+    const fullName = u.fullName || u.user_metadata?.full_name;
+    if (fullName && typeof fullName === 'string' && fullName.trim()) {
+      return fullName.trim();
+    }
     return (
       u.username ||
-      u.user_metadata?.full_name ||
-      u.user_metadata?.name ||
+      u.user_metadata?.username ||
       u.user_metadata?.display_name ||
+      u.user_metadata?.name ||
       u.email?.split('@')[0] ||
       'User'
     );
+  };
+
+  // Helper: get user full name specifically (empty if not set)
+  const getUserFullName = (u = user) => {
+    if (!u) return '';
+    const fullName = u.fullName || u.user_metadata?.full_name;
+    return (fullName && typeof fullName === 'string') ? fullName.trim() : '';
+  };
+
+  // Helper: get user permanent username specifically
+  const getUserUsername = (u = user) => {
+    if (!u) return '';
+    return u.username || u.user_metadata?.username || u.email?.split('@')[0] || '';
   };
 
   // Helper: get user course
@@ -168,7 +185,7 @@ export function AuthProvider({ children }) {
     return u.course || u.user_metadata?.course || '';
   };
 
-  // Update user profile metadata (name, course)
+  // Update user profile metadata (full_name, course) - Username is permanent!
   const updateProfile = async ({ full_name, course }) => {
     if (!user) throw new Error('User not authenticated.');
 
@@ -176,6 +193,7 @@ export function AuthProvider({ children }) {
       const updated = await updateAccountProfile(user.id, { full_name, course });
       if (updated) {
         setUser(updated);
+        setSession({ user: updated });
       }
       return updated;
     }
@@ -250,6 +268,8 @@ export function AuthProvider({ children }) {
     updatePassword,
     signOut,
     getUserDisplayName,
+    getUserFullName,
+    getUserUsername,
     getUserCourse,
   };
 
