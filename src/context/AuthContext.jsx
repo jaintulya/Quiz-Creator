@@ -8,6 +8,9 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastAuthEvent, setLastAuthEvent] = useState(null);
+  const [isGuest, setIsGuest] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('quizcraft_guest_mode') === 'true'
+  );
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -49,7 +52,6 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  // Google OAuth Login
   const signInWithGoogle = async () => {
     if (!isSupabaseConfigured) {
       throw new Error('Supabase is not configured yet.');
@@ -61,133 +63,68 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   };
 
-  // Email & Password Sign In
-  const signInWithEmail = async (email, password) => {
-    if (!isSupabaseConfigured) {
-      throw new Error('Supabase is not configured yet.');
-    }
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    setUser(data.user);
-    setSession(data.session);
-    return data;
+  // Helper to convert username to synthetic email
+  const getSyntheticEmail = (username) => {
+    return `${btoa(encodeURIComponent(username.trim().toLowerCase())).replace(/=/g, '')}@quizcraft.local`;
   };
 
-  // Email & Password Sign Up (with name + course metadata)
-  // Sends email confirmation link directing to /email-verified
-  const signUpWithEmail = async (email, password, name = '', course = '') => {
-    if (!isSupabaseConfigured) {
-      throw new Error('Supabase is not configured yet.');
-    }
-    const redirectTo = `${getSiteUrl()}/email-verified`;
+  // Username/Password Registration
+  const signUpWithUsername = async (username, password, course) => {
+    if (!isSupabaseConfigured) throw new Error('Supabase is not configured yet.');
+    
+    const syntheticEmail = getSyntheticEmail(username);
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: syntheticEmail,
       password,
       options: {
-        emailRedirectTo: redirectTo,
         data: {
-          full_name: name.trim(),
-          course: course.trim(),
-          display_name: name.trim(),
-        },
-      },
-    });
-    if (error) throw error;
-
-    // If identities array is empty, the email is already registered
-    if (data.user && data.user.identities && data.user.identities.length === 0) {
-      throw new Error('An account with this email already exists. Please sign in instead.');
-    }
-
-    if (data.user && !data.session) {
-      // Email confirmation required — confirmation link was sent
-      return { ...data, requiresConfirmation: true };
-    }
-
-    // Immediately logged in (if email confirmation is disabled in Supabase)
-    setUser(data.user);
-    setSession(data.session);
-    return data;
-  };
-
-  // Resend Confirmation Email
-  // Uses the same /email-verified redirect as the original sign-up so a resent
-  // link lands on the verification success page, not the site root.
-  const resendSignupEmail = async (email) => {
-    if (!isSupabaseConfigured) {
-      throw new Error('Supabase is not configured yet.');
-    }
-    const redirectTo = `${getSiteUrl()}/email-verified`;
-    const { data, error } = await supabase.auth.resend({
-      type: 'signup',
-      email: email.trim(),
-      options: { emailRedirectTo: redirectTo },
-    });
-    if (error) throw error;
-    return data;
-  };
-
-  // Send Password Reset Email
-  // Sends password reset link directing to /reset-password
-  const sendPasswordResetEmail = async (email) => {
-    if (!isSupabaseConfigured) {
-      throw new Error('Supabase is not configured yet.');
-    }
-    const redirectTo = `${getSiteUrl()}/reset-password`;
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo,
-    });
-    if (error) throw error;
-    return data;
-  };
-
-  // Verify OTP (6-digit code from email)
-  const verifyOtp = async (email, token) => {
-    if (!isSupabaseConfigured) {
-      throw new Error('Supabase is not configured yet.');
-    }
-    const cleanEmail = email.trim();
-    const cleanToken = token.trim();
-
-    // Try type 'signup' first
-    let res = await supabase.auth.verifyOtp({
-      email: cleanEmail,
-      token: cleanToken,
-      type: 'signup',
-    });
-
-    // Fallback: if 'signup' failed, try 'email'
-    if (res.error) {
-      const fallback = await supabase.auth.verifyOtp({
-        email: cleanEmail,
-        token: cleanToken,
-        type: 'email',
-      });
-      if (!fallback.error) {
-        res = fallback;
+          username: username.trim(),
+          full_name: username.trim(),
+          display_name: username.trim(),
+          course: course?.trim() || '',
+        }
       }
-    }
-
-    if (res.error) throw res.error;
-    if (res.data?.user) {
-      setUser(res.data.user);
-      setSession(res.data.session);
-    }
-    return res.data;
-  };
-
-  // Resend OTP to user's email
-  const resendOtp = async (email) => {
-    if (!isSupabaseConfigured) {
-      throw new Error('Supabase is not configured yet.');
-    }
-    const { data, error } = await supabase.auth.resend({
-      type: 'signup',
-      email: email.trim(),
     });
-    if (error) throw error;
+
+    if (error) {
+      if (error.message.includes('already registered')) {
+        throw new Error('Username already exists. Please choose another username.');
+      }
+      throw error;
+    }
     return data;
   };
+
+  // Username/Password Login
+  const signInWithUsername = async (username, password) => {
+    if (!isSupabaseConfigured) throw new Error('Supabase is not configured yet.');
+    
+    const syntheticEmail = getSyntheticEmail(username);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: syntheticEmail,
+      password,
+    });
+
+    if (error) {
+      if (error.message.includes('Invalid login credentials')) {
+        throw new Error('Incorrect username or password.');
+      }
+      throw error;
+    }
+    return data;
+  };
+
+  const loginAsGuest = () => {
+    localStorage.setItem('quizcraft_guest_mode', 'true');
+    setIsGuest(true);
+  };
+
+  const exitGuestMode = () => {
+    localStorage.removeItem('quizcraft_guest_mode');
+    setIsGuest(false);
+  };
+
+
 
   // Sign Out
   const signOut = async (options = { scope: 'local' }) => {
@@ -202,11 +139,7 @@ export function AuthProvider({ children }) {
     try {
       localStorage.removeItem('quizcraft_quizzes');
     } catch { /* storage unavailable */ }
-    // Clear the recovery marker so a stale flag from a previous reset
-    // can never validate a future /reset-password visit for another account.
-    try {
-      sessionStorage.removeItem('qc_recovery_email');
-    } catch { /* storage unavailable */ }
+    exitGuestMode();
     setUser(null);
     setSession(null);
   };
@@ -249,34 +182,45 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  // Update password
-  const updatePassword = async (newPassword) => {
-    if (!isSupabaseConfigured) {
-      throw new Error('Supabase is not configured yet.');
+  // Change Password
+  const updatePassword = async (currentPassword, newPassword) => {
+    if (!isSupabaseConfigured) throw new Error('Supabase is not configured yet.');
+    if (!user) throw new Error('You must be logged in to change your password.');
+
+    // Verify current password first by re-authenticating
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+
+    if (signInError) {
+      throw new Error('Current password is incorrect.');
     }
-    const { data, error } = await supabase.auth.updateUser({
+
+    // Now update to the new password
+    const { error: updateError } = await supabase.auth.updateUser({
       password: newPassword,
     });
-    if (error) throw error;
-    if (data?.user) {
-      setUser(data.user);
+
+    if (updateError) {
+      throw new Error(updateError.message || 'Failed to update password.');
     }
-    return data;
   };
+
+
 
   const value = {
     user,
     session,
     loading,
     lastAuthEvent,
+    isGuest,
     isConfigured: isSupabaseConfigured,
     signInWithGoogle,
-    signInWithEmail,
-    signUpWithEmail,
-    resendSignupEmail,
-    sendPasswordResetEmail,
-    verifyOtp,
-    resendOtp,
+    signUpWithUsername,
+    signInWithUsername,
+    loginAsGuest,
+    exitGuestMode,
     updateProfile,
     updatePassword,
     signOut,

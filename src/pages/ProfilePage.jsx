@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { fetchAllQuizzes } from '../services/quizService.js';
 
 export default function ProfilePage({ onNavigate }) {
-  const { user, signOut, getUserDisplayName, getUserCourse, updateProfile, updatePassword } = useAuth();
+  const { user, isGuest, signOut, getUserDisplayName, getUserCourse, updateProfile, updatePassword } = useAuth();
   const [quizzes, setQuizzes] = useState([]);
   const [loadingQuizzes, setLoadingQuizzes] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
@@ -18,15 +18,14 @@ export default function ProfilePage({ onNavigate }) {
   const [editCourse, setEditCourse] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
-
   // Change Password state
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
-
   const name   = getUserDisplayName();
   const course = getUserCourse();
   const email  = user?.email || '';
@@ -76,19 +75,24 @@ export default function ProfilePage({ onNavigate }) {
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
+    if (!currentPassword) {
+      setPasswordMessage({ type: 'error', text: 'Please enter your current password.' });
+      return;
+    }
     if (newPassword.length < 6) {
-      setPasswordMessage({ type: 'error', text: 'Password must be at least 6 characters long.' });
+      setPasswordMessage({ type: 'error', text: 'New password must be at least 6 characters long.' });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordMessage({ type: 'error', text: 'Passwords do not match.' });
+      setPasswordMessage({ type: 'error', text: 'New passwords do not match.' });
       return;
     }
     setPasswordSaving(true);
     setPasswordMessage({ type: '', text: '' });
     try {
-      await updatePassword(newPassword);
+      await updatePassword(currentPassword, newPassword);
       setPasswordMessage({ type: 'success', text: 'Password changed successfully!' });
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setIsChangingPassword(false);
@@ -247,100 +251,112 @@ export default function ProfilePage({ onNavigate }) {
           })}
         </div>
       </div>
-
       {/* ── Change Password Card ── */}
-      <div className="glass-card p-5 sm:p-6 border-white/10 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <KeyRound className="w-4 h-4 text-[#f5ba72]" />
-            <h2 className="text-sm font-bold text-white">Password & Security</h2>
+      {!isGoogle && !isGuest && (
+        <div className="glass-card p-5 sm:p-6 border-white/10 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-[#f5ba72]" />
+              <h2 className="text-sm font-bold text-white">Password & Security</h2>
+            </div>
+            <button
+              onClick={() => {
+                setIsChangingPassword(!isChangingPassword);
+                setPasswordMessage({ type: '', text: '' });
+              }}
+              className="btn-secondary py-1.5 px-3 text-xs"
+            >
+              {isChangingPassword ? 'Cancel' : 'Change Password'}
+            </button>
           </div>
-          <button
-            onClick={() => {
-              setIsChangingPassword(!isChangingPassword);
-              setPasswordMessage({ type: '', text: '' });
-            }}
-            className="btn-secondary py-1.5 px-3 text-xs"
-          >
-            {isChangingPassword ? 'Cancel' : 'Change Password'}
-          </button>
-        </div>
 
-        {passwordMessage.text && (
-          <div className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 animate-fade-in ${
-            passwordMessage.type === 'error'
-              ? 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
-              : 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300'
-          }`}>
-            {passwordMessage.type === 'error' ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
-            <span>{passwordMessage.text}</span>
-          </div>
-        )}
+          {passwordMessage.text && (
+            <div className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 animate-fade-in ${
+              passwordMessage.type === 'error'
+                ? 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
+                : 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300'
+            }`}>
+              {passwordMessage.type === 'error' ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
+              <span>{passwordMessage.text}</span>
+            </div>
+          )}
 
-        {isChangingPassword ? (
-          <form onSubmit={handleChangePassword} className="space-y-3 pt-2 animate-fade-in">
-            <div>
-              <label className="text-xs text-[#a39e94] block mb-1">New Password</label>
-              <div className="relative">
+          {isChangingPassword ? (
+            <form onSubmit={handleChangePassword} className="space-y-3 pt-2 animate-fade-in">
+              <div>
+                <label className="text-xs text-[#a39e94] block mb-1">Current Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter your current password"
+                    className="input-field text-xs sm:text-sm py-2 px-3 pr-10 w-full"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d877c] hover:text-white"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-[#a39e94] block mb-1">New Password</label>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Enter new password (min 6 characters)"
-                  className="input-field text-xs sm:text-sm py-2 px-3 pr-10 w-full"
+                  className="input-field text-xs sm:text-sm py-2 px-3 w-full"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="text-xs text-[#a39e94] block mb-1">Confirm New Password</label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your new password"
+                  className="input-field text-xs sm:text-sm py-2 px-3 w-full"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d877c] hover:text-white"
+                  onClick={() => setIsChangingPassword(false)}
+                  className="btn-ghost py-1.5 px-3 text-xs"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordSaving}
+                  className="btn-primary py-1.5 px-4 text-xs font-bold flex items-center gap-1.5"
+                >
+                  {passwordSaving ? (
+                    <span className="w-3.5 h-3.5 border-2 border-[#1b1206]/40 border-t-[#1b1206] rounded-full animate-spin" />
+                  ) : (
+                    <KeyRound className="w-3.5 h-3.5" />
+                  )}
+                  <span>Update Password</span>
                 </button>
               </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-[#a39e94] block mb-1">Confirm New Password</label>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm your new password"
-                className="input-field text-xs sm:text-sm py-2 px-3 w-full"
-                required
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsChangingPassword(false)}
-                className="btn-ghost py-1.5 px-3 text-xs"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={passwordSaving}
-                className="btn-primary py-1.5 px-4 text-xs font-bold flex items-center gap-1.5"
-              >
-                {passwordSaving ? (
-                  <span className="w-3.5 h-3.5 border-2 border-[#1b1206]/40 border-t-[#1b1206] rounded-full animate-spin" />
-                ) : (
-                  <KeyRound className="w-3.5 h-3.5" />
-                )}
-                <span>Update Password</span>
-              </button>
-            </div>
-          </form>
-        ) : (
-          <p className="text-xs text-[#8d877c]">
-            Need to update your login password? Click the button above to set a new password.
-          </p>
-        )}
-      </div>
-
+            </form>
+          ) : (
+            <p className="text-xs text-[#8d877c]">
+              Need to update your login password? Click the button above to set a new password.
+            </p>
+          )}
+        </div>
+      )}
       {/* ── Quiz Stats ── */}
       <div className="glass-card p-5 sm:p-6 border-white/10">
         <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">

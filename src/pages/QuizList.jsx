@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { fetchAllQuizzes, deleteQuizRecord, updateExistingQuiz } from '../services/quizService.js';
 
 export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAuth }) {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -20,7 +20,7 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
 
   // Load quizzes from Supabase (or local fallback)
   const loadQuizzes = async () => {
-    if (!user) {
+    if (!user && !isGuest) {
       setQuizzes([]);
       setLoading(false);
       return;
@@ -28,7 +28,7 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
     setLoading(true);
     setQuizzes([]);
     try {
-      const data = await fetchAllQuizzes(user.id);
+      const data = await fetchAllQuizzes(user?.id);
       setQuizzes(data);
     } catch (err) {
       console.error('Error fetching quizzes:', err);
@@ -39,7 +39,7 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
 
   useEffect(() => {
     loadQuizzes();
-  }, [user]);
+  }, [user, isGuest]);
 
   // Calculations for Stats Bar
   const totalQuizzesCount = quizzes.length;
@@ -66,8 +66,8 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
 
   // Actions
   const handleCreateQuiz = () => {
-    if (!user) {
-      if (onOpenAuth) onOpenAuth('Please sign in to create and save quizzes.');
+    if (!user && !isGuest) {
+      if (onOpenAuth) onOpenAuth('Please sign in or continue as guest to create and save quizzes.');
     } else {
       onNavigate('create');
     }

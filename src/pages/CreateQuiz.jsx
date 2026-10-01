@@ -9,7 +9,7 @@ import { saveNewQuiz, updateExistingQuiz, updateTitleOnly } from '../services/qu
 import { validateQuizJSON } from '../utils/storage.js';
 
 export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const [title, setTitle]         = useState(editQuiz ? editQuiz.title : '');
   const [description, setDescription] = useState(editQuiz?.description || '');
   const [jsonText, setJsonText]   = useState('');
@@ -18,8 +18,8 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
   const [success, setSuccess]     = useState('');
   const [loading, setLoading]     = useState(false);
 
-  // Authentication gate: quiz creation requires login
-  if (!user) {
+  // Authentication gate: quiz creation requires login or guest mode
+  if (!user && !isGuest) {
     return (
       <div className="max-w-md mx-auto px-4 py-20 text-center animate-fade-in">
         <div className="glass-card p-8 border-white/10 space-y-5">
@@ -27,18 +27,18 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
             <Lock className="w-8 h-8" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white mb-2">Sign In Required</h2>
+            <h2 className="text-xl font-bold text-white mb-2">Authentication Required</h2>
             <p className="text-xs sm:text-sm text-[#a39e94]">
-              Quiz creation is available for logged-in users. Please sign in to create and save quizzes to the database.
+              Quiz creation is available for logged-in users and guests. Please sign in or continue as a guest to create and save quizzes.
             </p>
           </div>
           <div className="flex flex-col gap-2.5 pt-2">
             <button
-              onClick={() => onOpenAuth && onOpenAuth('Please sign in to create and save your quiz.')}
+              onClick={() => onOpenAuth && onOpenAuth('Please sign in or continue as a guest to create your quiz.')}
               className="btn-primary w-full py-2.5 text-sm font-bold flex items-center justify-center gap-2"
             >
               <LogIn className="w-4 h-4" />
-              <span>Sign In to Continue</span>
+              <span>Sign In / Guest</span>
             </button>
             <button
               onClick={() => onNavigate('list')}

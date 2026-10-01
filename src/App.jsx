@@ -7,24 +7,15 @@ import ResultPage from './pages/ResultPage.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
-import EmailVerifiedPage from './pages/EmailVerifiedPage.jsx';
-import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
-import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import ErrorBoundary from './components/common/ErrorBoundary.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
-import { isEmailConfirmationUrl, isPasswordRecoveryUrl } from './services/supabase.js';
 
 function AppContent() {
-  const { user, loading, lastAuthEvent } = useAuth();
+  const { user, loading, isGuest, lastAuthEvent } = useAuth();
 
   const getInitialPath = () => {
     if (typeof window !== 'undefined') {
-      if (isEmailConfirmationUrl()) {
-        return '/email-verified';
-      }
-      if (isPasswordRecoveryUrl()) {
-        return '/reset-password';
-      }
       const p = window.location.pathname;
       if (p && p !== '/') return p.replace(/\/+$/, '');
     }
@@ -47,15 +38,6 @@ function AppContent() {
     else if (target === 'play') path = '/play';
     else if (target === 'result') path = '/result';
     else if (target === 'login') path = '/login';
-    else if (target === 'signup') path = '/signup';
-    else if (target === 'forgot-password') path = '/forgot-password';
-    else if (target === 'reset-password') path = '/reset-password';
-    else if (target === 'email-verified') path = '/email-verified';
-
-    // Set prefill email for forgot-password page (or clear if empty)
-    if (options.prefillEmail !== undefined) {
-      setPrefillEmail(options.prefillEmail);
-    }
     if (options.promptMessage !== undefined) {
       setAuthPromptMessage(options.promptMessage);
     }
@@ -69,16 +51,6 @@ function AppContent() {
 
   // Sync with browser back / forward navigation and normalize callback URLs
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (isEmailConfirmationUrl() && window.location.pathname !== '/email-verified') {
-        window.history.replaceState({}, '', '/email-verified' + window.location.hash + window.location.search);
-        setCurrentPath('/email-verified');
-      } else if (isPasswordRecoveryUrl() && window.location.pathname !== '/reset-password') {
-        window.history.replaceState({}, '', '/reset-password' + window.location.hash + window.location.search);
-        setCurrentPath('/reset-password');
-      }
-    }
-
     const handlePopState = () => {
       const p = window.location.pathname ? window.location.pathname.replace(/\/+$/, '') : '/';
       setCurrentPath(p || '/');
@@ -88,42 +60,29 @@ function AppContent() {
   }, []);
 
   // Dedicated auth navigation handler
-  const handleOpenAuth = (msgOrMode = '', initialMode = 'signin') => {
-    const mode = (msgOrMode === 'signin' || msgOrMode === 'signup') ? msgOrMode : initialMode;
-    const msg = typeof msgOrMode === 'string' && msgOrMode !== 'signin' && msgOrMode !== 'signup' ? msgOrMode : '';
-    navigate(mode === 'signup' ? '/signup' : '/login', { promptMessage: msg });
+  const handleOpenAuth = (msg = '') => {
+    navigate('/login', { promptMessage: msg });
   };
 
   // Logged-in user redirection
   useEffect(() => {
-    // NEVER redirect away from public auth utility routes or during recovery
-    if (
-      currentPath === '/reset-password' ||
-      currentPath === '/forgot-password' ||
-      currentPath === '/email-verified' ||
-      isEmailConfirmationUrl() ||
-      isPasswordRecoveryUrl()
-    ) {
-      return;
-    }
-    if (!user) return;
-    if (lastAuthEvent === 'PASSWORD_RECOVERY') return;
+    if (!user && !isGuest) return;
 
-    // Normal login, Google OAuth, or logged-in user on root/login/signup -> send to dashboard
-    if (currentPath === '/' || currentPath === '/login' || currentPath === '/signup') {
+    // Normal login, Google OAuth, or logged-in user on root/login -> send to dashboard
+    if (currentPath === '/' || currentPath === '/login') {
       navigate('/dashboard');
     }
-  }, [user, currentPath, navigate, lastAuthEvent]);
+  }, [user, isGuest, currentPath, navigate]);
 
   // Protected route guard: unauthenticated users redirect to /login
   useEffect(() => {
-    if (!user && !loading) {
+    if (!user && !isGuest && !loading) {
       const protectedPaths = ['/dashboard', '/my-quizzes', '/create-quiz', '/profile', '/edit'];
       if (protectedPaths.includes(currentPath)) {
-        navigate('/login', { promptMessage: 'Please sign in to access your dashboard and quizzes.' });
+        navigate('/login', { promptMessage: 'Please sign in or continue as guest to access.' });
       }
     }
-  }, [user, loading, currentPath, navigate]);
+  }, [user, isGuest, loading, currentPath, navigate]);
 
   const handleStartQuiz = (quiz) => {
     setActiveQuiz(quiz);
@@ -155,7 +114,6 @@ function AppContent() {
     if (currentPath === '/dashboard') return 'dashboard';
     if (currentPath === '/profile') return 'profile';
     if (currentPath === '/login') return 'login';
-    if (currentPath === '/signup') return 'signup';
     return 'home';
   };
 
@@ -192,57 +150,24 @@ function AppContent() {
         )}
 
         <main className="flex-1">
-          {/* ── PUBLIC ROUTE: /email-verified ── */}
-          {currentPath === '/email-verified' && (
-            <EmailVerifiedPage
-              onNavigate={navigate}
-            />
-          )}
-
-          {/* ── PUBLIC ROUTE: /forgot-password ── */}
-          {currentPath === '/forgot-password' && (
-            <ForgotPasswordPage
-              onNavigate={navigate}
-              prefillEmail={prefillEmail}
-            />
-          )}
-
-          {/* ── PUBLIC ROUTE: /reset-password ── */}
-          {currentPath === '/reset-password' && (
-            <ResetPasswordPage
-              onNavigate={navigate}
-            />
-          )}
-
           {/* ── PUBLIC ROUTE: /login ── */}
-          {currentPath === '/login' && !user && (
+          {currentPath === '/login' && !user && !isGuest && (
             <LoginPage
-              mode="signin"
-              onNavigate={navigate}
-              promptMessage={authPromptMessage}
-              prefillEmail={prefillEmail}
-            />
-          )}
-
-          {/* ── PUBLIC ROUTE: /signup ── */}
-          {currentPath === '/signup' && !user && (
-            <LoginPage
-              mode="signup"
               onNavigate={navigate}
               promptMessage={authPromptMessage}
             />
           )}
 
-          {/* ── PUBLIC ROUTE: / (Landing Page for guests) ── */}
-          {currentPath === '/' && !user && (
+          {/* ── PUBLIC ROUTE: / (Landing Page for guests/unauth) ── */}
+          {currentPath === '/' && !user && !isGuest && (
             <LandingPage
               onNavigate={navigate}
-              onOpenAuth={(msg) => handleOpenAuth(msg, 'signup')}
+              onOpenAuth={(msg) => handleOpenAuth(msg)}
             />
           )}
 
           {/* ── PROTECTED ROUTE: /dashboard ── */}
-          {currentPath === '/dashboard' && user && (
+          {currentPath === '/dashboard' && (user || isGuest) && (
             <Dashboard
               onNavigate={navigate}
               onStartQuiz={handleStartQuiz}
@@ -252,7 +177,7 @@ function AppContent() {
           )}
 
           {/* ── PROTECTED ROUTE: /my-quizzes ── */}
-          {currentPath === '/my-quizzes' && user && (
+          {currentPath === '/my-quizzes' && (user || isGuest) && (
             <QuizList
               onNavigate={navigate}
               onStartQuiz={handleStartQuiz}
@@ -262,7 +187,7 @@ function AppContent() {
           )}
 
           {/* ── PROTECTED ROUTE: /create-quiz ── */}
-          {currentPath === '/create-quiz' && user && (
+          {currentPath === '/create-quiz' && (user || isGuest) && (
             <CreateQuiz
               onNavigate={navigate}
               editQuiz={activeQuiz}
@@ -271,7 +196,7 @@ function AppContent() {
           )}
 
           {/* ── PROTECTED ROUTE: /profile ── */}
-          {currentPath === '/profile' && user && (
+          {currentPath === '/profile' && (user || isGuest) && (
             <ProfilePage onNavigate={navigate} />
           )}
 
@@ -280,7 +205,7 @@ function AppContent() {
             <QuizPlayer
               quiz={activeQuiz}
               onFinish={handleFinish}
-              onBack={() => navigate(user ? '/my-quizzes' : '/')}
+              onBack={() => navigate((user || isGuest) ? '/my-quizzes' : '/')}
             />
           )}
 
@@ -289,7 +214,7 @@ function AppContent() {
             <ResultPage
               result={quizResult}
               onRestart={handleRestart}
-              onBack={() => navigate(user ? '/my-quizzes' : '/')}
+              onBack={() => navigate((user || isGuest) ? '/my-quizzes' : '/')}
             />
           )}
         </main>
@@ -301,7 +226,7 @@ function AppContent() {
                 QuizCraft &copy; {new Date().getFullYear()} &mdash; AI Powered Interactive Learning
               </span>
               <div className="flex items-center gap-4 text-[#8d877c]">
-                {user ? (
+                {(user || isGuest) ? (
                   <>
                     <button onClick={() => navigate('/create-quiz')} className="hover:text-[#f5ba72] transition-colors">Create Quiz</button>
                     <span>&bull;</span>
@@ -312,10 +237,6 @@ function AppContent() {
                 ) : (
                   <>
                     <button onClick={() => navigate('/login')} className="hover:text-[#f5ba72] transition-colors">Sign In</button>
-                    <span>&bull;</span>
-                    <button onClick={() => navigate('/signup')} className="hover:text-[#f5ba72] transition-colors">Create Account</button>
-                    <span>&bull;</span>
-                    <button onClick={() => navigate('/forgot-password')} className="hover:text-[#f5ba72] transition-colors">Forgot Password</button>
                   </>
                 )}
               </div>
@@ -329,8 +250,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

@@ -27,26 +27,26 @@ function TimeAgo({ dateStr }) {
 }
 
 export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenAuth }) {
-  const { user, getUserDisplayName, getUserCourse } = useAuth();
+  const { user, isGuest, getUserDisplayName, getUserCourse } = useAuth();
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
+    if (!user && !isGuest) {
       setQuizzes([]);
       setLoading(false);
       return;
     }
     setLoading(true);
     setQuizzes([]);
-    fetchAllQuizzes(user.id).then((data) => {
+    fetchAllQuizzes(user?.id).then((data) => {
       setQuizzes(data);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [user]);
+  }, [user, isGuest]);
 
-  const name     = getUserDisplayName();
-  const course   = getUserCourse();
+  const name     = user ? getUserDisplayName() : 'Guest';
+  const course   = user ? getUserCourse() : '';
   const greeting = getGreeting();
 
   const totalQuestions = quizzes.reduce((acc, q) => acc + (q.questions?.length || 0), 0);
@@ -65,6 +65,11 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             {name} 👋
           </h1>
+          {isGuest && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-500/15 border border-gray-500/25 text-gray-300">
+              Guest Mode
+            </span>
+          )}
           {course && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#f5ba72]/15 border border-[#f5ba72]/25 text-[#f5ba72]">
               <BookOpen className="w-3 h-3" />

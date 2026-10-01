@@ -3,18 +3,19 @@ import UserMenu from '../auth/UserMenu.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function Navbar({ currentPage, onNavigate, onOpenAuth }) {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
+  const hasAccess = !!(user || isGuest);
 
   const handleCreateClick = () => {
-    if (!user) {
-      if (onOpenAuth) onOpenAuth('Please sign in to create and save quizzes.');
+    if (!hasAccess) {
+      if (onOpenAuth) onOpenAuth('Please sign in or continue as guest to create quizzes.');
     } else {
       onNavigate('create');
     }
   };
 
   const handleBrandClick = () => {
-    onNavigate(user ? 'dashboard' : 'home');
+    onNavigate(hasAccess ? 'dashboard' : 'home');
   };
 
   const navLink = (page, label, Icon) => (
@@ -51,8 +52,8 @@ export default function Navbar({ currentPage, onNavigate, onOpenAuth }) {
         {/* Nav Links + Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
 
-          {/* Authenticated nav links */}
-          {user && (
+          {/* Authenticated / Guest nav links */}
+          {hasAccess && (
             <>
               {navLink('dashboard', 'Home', LayoutDashboard)}
               {navLink('list', 'My Quizzes', BookOpen)}
@@ -62,8 +63,8 @@ export default function Navbar({ currentPage, onNavigate, onOpenAuth }) {
           {/* User Auth Menu */}
           <UserMenu onOpenAuth={onOpenAuth} onNavigate={onNavigate} />
 
-          {/* Create Quiz — only for authenticated users */}
-          {user && (
+          {/* Create Quiz */}
+          {hasAccess && (
             <button
               id="nav-create-btn"
               onClick={handleCreateClick}
