@@ -179,7 +179,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
           </p>
 
           {/* CTA row */}
-          <div className="animate-fade-up delay-300 flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <div className="animate-fade-up delay-300 flex items-center justify-center pt-2">
             <button
               onClick={() => onNavigate ? onNavigate('/login') : onOpenAuth?.()}
               className="btn-primary-lg gap-2.5 group"
@@ -188,12 +188,6 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
               <Sparkles className="w-5 h-5" />
               <span>Start for Free</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-            </button>
-            <button
-              onClick={() => onNavigate ? onNavigate('/login') : onOpenAuth?.()}
-              className="btn-secondary py-3 px-6 text-sm font-semibold"
-            >
-              Continue as Guest
             </button>
           </div>
 
