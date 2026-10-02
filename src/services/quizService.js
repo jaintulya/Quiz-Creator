@@ -1,12 +1,49 @@
 import { supabase, isSupabaseConfigured } from './supabase.js';
 import {
   getAllQuizzes as getLocalQuizzes,
+  getQuizById as getLocalQuizById,
   saveQuiz as saveLocalQuiz,
   updateQuiz as updateLocalQuiz,
   updateQuizTitle as updateLocalQuizTitle,
   deleteQuiz as deleteLocalQuiz,
   getStorageKey,
 } from './storage.js';
+
+// ─── Fetch Single Quiz by ID (Local + Supabase) ─────────────────────────────
+export async function fetchQuizById(id, userId = null) {
+  // First try local storage (searches current user and all keys)
+  const local = getLocalQuizById(id, userId);
+  if (local) return local;
+
+  // Next, try Supabase if configured
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('quizzes')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!error && data) {
+        return {
+          id: data.id,
+          title: data.title,
+          description: data.description || '',
+          category: data.category || 'General',
+          questions: data.questions,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+          userId: data.user_id,
+          isCloud: true,
+        };
+      }
+    } catch (err) {
+      console.warn('Cloud fetch single quiz failed:', err);
+    }
+  }
+
+  return null;
+}
 
 // ─── Fetch Quizzes (Supabase with user-scoped local fallback) ───────────────
 export async function fetchAllQuizzes(userId = null) {
@@ -18,13 +55,16 @@ export async function fetchAllQuizzes(userId = null) {
   // If Supabase is available, try fetching cloud quizzes
   if (isSupabaseConfigured) {
     try {
+      // 1. Sync any local quizzes for this user that are not yet in Supabase
+      await syncLocalQuizzesToCloud(userId);
+
       const { data, error } = await supabase
         .from('quizzes')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && Array.isArray(data)) {
         const mapped = data.map((item) => ({
           id: item.id,
           title: item.title,
@@ -36,11 +76,13 @@ export async function fetchAllQuizzes(userId = null) {
           userId: item.user_id,
           isCloud: true,
         }));
-        // Cache per user
+        // Cache per user on this device for instant offline access
         try {
           localStorage.setItem(getStorageKey(userId), JSON.stringify(mapped));
         } catch {}
         return mapped;
+      } else if (error) {
+        console.warn('Cloud fetch quizzes notice:', error.message || error);
       }
     } catch (err) {
       console.warn('Cloud fetch quizzes skipped:', err);
@@ -82,6 +124,8 @@ export async function saveNewQuiz(title, questions, userId = null, category = 'G
         ...localQuiz,
         isCloud: true,
       };
+    } else {
+      console.warn('Supabase cloud quiz insert error:', error.message || error);
     }
   } catch (err) {
     console.warn('Cloud insert skipped:', err);
@@ -174,9 +218,13 @@ export async function syncLocalQuizzesToCloud(userId, quizzes = null) {
       updated_at: q.updatedAt || new Date().toISOString(),
     }));
 
-    await supabase
+    const { error } = await supabase
       .from('quizzes')
       .upsert(payloads, { onConflict: 'id' });
+
+    if (error) {
+      console.warn('Supabase sync quizzes notice:', error.message || error);
+    }
   } catch (err) {
     console.warn('Sync skipped:', err);
   }
