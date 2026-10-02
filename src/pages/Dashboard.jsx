@@ -123,16 +123,16 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
 
     targetId = targetId.trim();
 
-    // 1. Check loaded quizzes (case-insensitive ID or title match)
-    let found = quizzes.find((q) =>
-      q.id.toLowerCase() === targetId.toLowerCase() ||
-      q.id.toLowerCase().includes(targetId.toLowerCase()) ||
-      q.title.toLowerCase() === targetId.toLowerCase()
-    );
+    // 1. Fetch from authoritative cloud database / storage
+    let found = await fetchQuizById(targetId, user?.id);
 
-    // 2. Fetch from storage/Supabase if not in active state
+    // 2. Check loaded quizzes if offline
     if (!found) {
-      found = await fetchQuizById(targetId, user?.id);
+      found = quizzes.find((q) =>
+        q.id?.toLowerCase() === targetId.toLowerCase() ||
+        q.code?.toLowerCase() === targetId.toLowerCase() ||
+        q.title?.toLowerCase() === targetId.toLowerCase()
+      );
     }
 
     if (found) {
@@ -140,7 +140,7 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
       setJoinCodeInput('');
       onStartQuiz(found);
     } else {
-      setJoinError('Quiz not found. Please verify the Quiz ID, short code, or link.');
+      setJoinError('Quiz not found or has been deleted by the owner.');
     }
   };
 
@@ -345,14 +345,15 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
                 type="text"
                 value={joinCodeInput}
                 onChange={(e) => setJoinCodeInput(e.target.value)}
-                placeholder="Paste Quiz ID or shared link"
-                className="input-field text-xs py-2 px-3 w-full"
+                placeholder="Enter Quiz Code (e.g. QC-7492)"
+                className="input-field text-xs py-2 px-3 w-full font-mono uppercase"
               />
-              {joinError && <p className="text-[10px] text-rose-400">{joinError}</p>}
+              {joinError && <p className="text-[10px] text-rose-400 font-medium">{joinError}</p>}
               <button
                 type="submit"
                 className="btn-secondary w-full py-2 text-xs font-bold flex items-center justify-center gap-1.5"
               >
+                <Play className="w-3.5 h-3.5 fill-[#f5ba72] text-[#f5ba72]" />
                 <span>Launch Quiz</span>
               </button>
             </form>

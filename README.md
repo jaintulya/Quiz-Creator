@@ -7,9 +7,7 @@ An intelligent, modern, and interactive quiz platform built with **React**, **Vi
 ## ✨ Key Features
 
 ### 🔐 Authentication & Security
-- **Google OAuth & Email Sign-In**: Instant one-click Google login or standard email/password authentication.
-- **Email Confirmation Link Flow**: Signup sends an email verification link redirecting to `/email-verified`. Supports multi-device verification (e.g. signing up on laptop, confirming on mobile) without session confusion.
-- **Forgot Password & Recovery Flow**: Secure password recovery via email reset link to `/reset-password` protected by Supabase's `PASSWORD_RECOVERY` session verification.
+- **Google OAuth & Username Sign-In**: Instant one-click Google login or robust Username/Password accounts with client-side SHA-256 password hashing.
 - **User Profile Management**: View account stats, edit Full Name and Course/Program, and update passwords directly from the Profile page.
 
 ### 🤖 AI-Powered Quiz Creation
@@ -88,11 +86,8 @@ In your Supabase Dashboard:
 3. Add the following to **Redirect URLs**:
    ```
    https://makeyourquiz.vercel.app/**
-   https://makeyourquiz.vercel.app/email-verified
-   https://makeyourquiz.vercel.app/reset-password
    http://localhost:5173/**
-   http://localhost:5173/email-verified
-   http://localhost:5173/reset-password
+   http://localhost:3000/**
    ```
 4. Click **Save**.
 
