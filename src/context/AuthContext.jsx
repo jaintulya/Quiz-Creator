@@ -7,6 +7,7 @@ import {
   updateUserProfile as updateAccountProfile,
   getActiveUserSession,
   clearActiveUserSession,
+  syncLocalAccountsToSupabase,
 } from '../services/authService.js';
 
 const AuthContext = createContext(null);
@@ -27,6 +28,9 @@ export function AuthProvider({ children }) {
   // Initialize auth state: Check Username Session first, then Supabase (Google) Session
   useEffect(() => {
     let mounted = true;
+
+    // Sync any locally registered accounts to Supabase app_users table
+    syncLocalAccountsToSupabase();
 
     // 1. Check if user is logged in via Username + Password
     const savedUser = getActiveUserSession();
