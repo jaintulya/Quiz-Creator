@@ -28,7 +28,26 @@ export function getAllQuizzes(userId = null) {
 // ─── Get a single quiz by id ───────────────────────────────────────────────────
 export function getQuizById(id, userId = null) {
   const quizzes = getAllQuizzes(userId);
-  return quizzes.find((q) => q.id === id) || null;
+  const found = quizzes.find((q) => q.id === id);
+  if (found) return found;
+
+  // Search across other quiz storage keys (e.g. guest or other account)
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('quizcraft_quizzes')) {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            const match = list.find((q) => q.id === id || q.id.includes(id));
+            if (match) return match;
+          }
+        }
+      }
+    }
+  } catch {}
+  return null;
 }
 
 // ─── Save a new quiz ───────────────────────────────────────────────────────────
@@ -93,40 +112,100 @@ export function updateQuizTitle(id, newTitle, userId = null) {
 }
 
 // ─── Validate quiz JSON ────────────────────────────────────────────────────────
-export function validateQuizJSON(jsonString) {
+export function validateQuizJSON(jsonString, fallbackTitle = '') {
   try {
-    const data = JSON.parse(jsonString);
+    const parsed = JSON.parse(jsonString);
 
-    if (!data.title || typeof data.title !== 'string') {
-      return { valid: false, error: 'Quiz must have a "title" string.' };
+    let rawQuestions = [];
+    let detectedTitle = '';
+
+    if (Array.isArray(parsed)) {
+      rawQuestions = parsed;
+    } else if (parsed && typeof parsed === 'object') {
+      if (typeof parsed.title === 'string' && parsed.title.trim()) {
+        detectedTitle = parsed.title.trim();
+      }
+      if (Array.isArray(parsed.questions)) {
+        rawQuestions = parsed.questions;
+      } else if (Array.isArray(parsed.items)) {
+        rawQuestions = parsed.items;
+      } else {
+        return { valid: false, error: 'JSON object must contain a "questions" array, or be an array of questions.' };
+      }
+    } else {
+      return { valid: false, error: 'JSON must be an array of questions or an object containing questions.' };
     }
 
-    if (!Array.isArray(data.questions) || data.questions.length === 0) {
-      return { valid: false, error: 'Quiz must contain a non-empty "questions" array.' };
+    if (rawQuestions.length === 0) {
+      return { valid: false, error: 'Quiz must contain at least 1 question.' };
     }
 
-    for (let i = 0; i < data.questions.length; i++) {
-      const q = data.questions[i];
-      if (!q.question || typeof q.question !== 'string') {
-        return { valid: false, error: `Question #${i + 1} is missing a "question" string.` };
+    const sanitizedQuestions = [];
+
+    for (let i = 0; i < rawQuestions.length; i++) {
+      const item = rawQuestions[i];
+      if (!item || typeof item !== 'object') {
+        return { valid: false, error: `Question #${i + 1} must be a valid JSON object.` };
       }
-      if (!Array.isArray(q.options) || q.options.length < 2) {
-        return { valid: false, error: `Question #${i + 1} must have at least 2 options.` };
+
+      const qText = item.question || item.title || item.prompt || item.text;
+      if (!qText || typeof qText !== 'string' || !qText.trim()) {
+        return { valid: false, error: `Question #${i + 1} is missing a "question" text.` };
       }
-      if (
-        typeof q.correctAnswer !== 'number' ||
-        q.correctAnswer < 0 ||
-        q.correctAnswer >= q.options.length
-      ) {
-        return {
-          valid: false,
-          error: `Question #${i + 1} "correctAnswer" must be a valid 0-based index of the options array.`,
-        };
+
+      const rawOpts = item.options || item.choices || item.answers;
+      if (!Array.isArray(rawOpts) || rawOpts.length < 2) {
+        return { valid: false, error: `Question #${i + 1} must have an "options" array with at least 2 choices.` };
       }
+
+      const options = rawOpts.map((opt) => String(opt ?? '').trim());
+
+      // Resolve correctAnswer whether it's index (0, 1, 2) or option string ("Pressable") or letter ("A", "B", etc.)
+      let resolvedIndex = 0;
+      const rawAns = item.correctAnswer !== undefined ? item.correctAnswer : item.answer;
+
+      if (typeof rawAns === 'number' && rawAns >= 0 && rawAns < options.length) {
+        resolvedIndex = Math.floor(rawAns);
+      } else if (typeof rawAns === 'string') {
+        const trimmedAns = rawAns.trim();
+        // 1. Exact string match (e.g. "Pressable")
+        const exactIdx = options.findIndex((opt) => opt === trimmedAns);
+        if (exactIdx !== -1) {
+          resolvedIndex = exactIdx;
+        } else {
+          // 2. Case-insensitive match
+          const caseIdx = options.findIndex((opt) => opt.toLowerCase() === trimmedAns.toLowerCase());
+          if (caseIdx !== -1) {
+            resolvedIndex = caseIdx;
+          } else {
+            // 3. Letter match (e.g. "A", "B", "C", "D")
+            const letterIdx = ['a', 'b', 'c', 'd', 'e', 'f'].indexOf(trimmedAns.toLowerCase());
+            if (letterIdx !== -1 && letterIdx < options.length) {
+              resolvedIndex = letterIdx;
+            } else if (!isNaN(Number(trimmedAns))) {
+              const numIdx = Number(trimmedAns);
+              if (numIdx >= 0 && numIdx < options.length) {
+                resolvedIndex = numIdx;
+              }
+            }
+          }
+        }
+      }
+
+      sanitizedQuestions.push({
+        question: qText.trim(),
+        options,
+        correctAnswer: resolvedIndex,
+        explanation: (item.explanation || item.reason || '').trim(),
+      });
     }
 
-    return { valid: true, data };
+    return {
+      valid: true,
+      data: sanitizedQuestions,
+      extractedTitle: detectedTitle || fallbackTitle || '',
+    };
   } catch {
-    return { valid: false, error: 'Invalid JSON syntax. Please check formatting.' };
+    return { valid: false, error: 'Invalid JSON syntax. Please check for missing commas or quotes.' };
   }
 }
