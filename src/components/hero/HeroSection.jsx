@@ -168,7 +168,7 @@ export default function HeroSection({ onCreateQuiz, onExploreQuizzes }) {
           {/* Handwritten Cursive Note (Bottom Right) */}
           <div className="absolute -bottom-7 sm:-bottom-8 -right-2 sm:-right-4 z-20 pointer-events-none hidden sm:block">
             <div className="font-handwriting text-xl sm:text-2xl text-caramel-300 font-bold rotate-3 select-none">
-              Small Quizzes, Big Progress ✍️
+              Small Quizzes, Big Progress
             </div>
           </div>
 
