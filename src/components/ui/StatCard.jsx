@@ -1,4 +1,13 @@
+import { use3DTilt } from '../../utils/use3DTilt.js';
+
 export default function StatCard({ icon: Icon, title, value, colorType = 'rose' }) {
+  const { cardRef, glareStyle } = use3DTilt({
+    max: 6,
+    perspective: 800,
+    scale: 1.02,
+    speed: 300,
+  });
+
   const colorConfigs = {
     rose: {
       bg: 'bg-[#2b1419]',
@@ -29,7 +38,19 @@ export default function StatCard({ icon: Icon, title, value, colorType = 'rose' 
   const config = colorConfigs[colorType] || colorConfigs.rose;
 
   return (
-    <div className="glass-panel p-4 sm:p-5 flex items-center justify-between gap-3 relative overflow-hidden group hover:border-white/15 transition-all duration-300">
+    <div
+      ref={cardRef}
+      className="glass-panel p-4 sm:p-5 flex items-center justify-between gap-3 relative overflow-hidden group hover:border-white/15 transition-all duration-300 transform-gpu cursor-pointer"
+      style={{ transformStyle: 'preserve-3d' }}
+    >
+      {/* Specular glare */}
+      <div
+        className="absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-300 z-0"
+        style={{
+          opacity: glareStyle.opacity,
+          background: `radial-gradient(circle 180px at ${glareStyle.x}% ${glareStyle.y}%, rgba(255,255,255,0.12), transparent 75%)`,
+        }}
+      />
       <div className="flex items-center gap-3.5 z-10">
         {/* Icon Square Tile */}
         <div className={`w-11 h-11 rounded-xl ${config.bg} border ${config.border} flex items-center justify-center shrink-0 shadow-sm`}>

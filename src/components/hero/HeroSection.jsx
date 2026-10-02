@@ -3,9 +3,17 @@ import {
   Sparkles, Plus, BookOpen, CheckCircle2, ChevronRight,
   Clock, Lightbulb, BarChart2, Check
 } from 'lucide-react';
+import { use3DTilt } from '../../utils/use3DTilt.js';
+import Hero3DCanvas from './Hero3DCanvas.jsx';
 
 export default function HeroSection({ onCreateQuiz, onExploreQuizzes }) {
   const [selectedMockOption, setSelectedMockOption] = useState('React');
+  const { cardRef: mockupRef, glareStyle } = use3DTilt({
+    max: 12,
+    perspective: 1000,
+    scale: 1.02,
+    speed: 350,
+  });
 
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#181614]/90 via-[#141210]/95 to-[#0e0d0c] border border-white/[0.08] p-6 sm:p-10 lg:p-12 shadow-2xl">
@@ -77,11 +85,16 @@ export default function HeroSection({ onCreateQuiz, onExploreQuizzes }) {
 
         </div>
 
-        {/* ── Right Column: Interactive Mockup & Floating Badges ───── */}
-        <div className="lg:col-span-5 relative flex justify-center items-center">
+        {/* ── Right Column: Interactive 3D Canvas + Mockup & Floating Badges ───── */}
+        <div className="lg:col-span-5 relative flex justify-center items-center py-2">
+
+          {/* Background 3D Geometric Canvas */}
+          <div className="absolute inset-0 -m-8 pointer-events-none opacity-40 z-0">
+            <Hero3DCanvas />
+          </div>
 
           {/* Handwritten Cursive Note (Top) */}
-          <div className="absolute -top-7 sm:-top-9 right-8 sm:right-16 z-20 pointer-events-none hidden sm:block">
+          <div className="absolute -top-7 sm:-top-9 right-8 sm:right-16 z-30 pointer-events-none hidden sm:block">
             <div className="font-handwriting text-2xl sm:text-3xl text-caramel-300 font-bold -rotate-6 flex items-center gap-2 select-none">
               <span>Knowledge Looks Better Here!</span>
               <span className="text-xl text-coral-400">✦</span>
@@ -89,7 +102,7 @@ export default function HeroSection({ onCreateQuiz, onExploreQuizzes }) {
           </div>
 
           {/* Floating Card Left: Learn Faster */}
-          <div className="absolute -left-3 sm:-left-6 top-1/3 z-20 animate-float hidden sm:flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-[#291316]/90 border border-rose-500/40 shadow-rose-glow backdrop-blur-md">
+          <div className="absolute -left-3 sm:-left-6 top-1/3 z-30 animate-float hidden sm:flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-[#291316]/90 border border-rose-500/40 shadow-rose-glow backdrop-blur-md">
             <div className="w-8 h-8 rounded-xl bg-rose-500/20 flex items-center justify-center">
               <Lightbulb className="w-4 h-4 text-rose-300" />
             </div>
@@ -100,7 +113,7 @@ export default function HeroSection({ onCreateQuiz, onExploreQuizzes }) {
           </div>
 
           {/* Floating Card Right: Track Progress */}
-          <div className="absolute -right-2 sm:-right-4 top-1/2 z-20 animate-float hidden sm:flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-[#0f241a]/90 border border-emerald-500/40 shadow-emerald-glow backdrop-blur-md" style={{ animationDelay: '1.5s' }}>
+          <div className="absolute -right-2 sm:-right-4 top-1/2 z-30 animate-float hidden sm:flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-[#0f241a]/90 border border-emerald-500/40 shadow-emerald-glow backdrop-blur-md" style={{ animationDelay: '1.5s' }}>
             <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center">
               <BarChart2 className="w-4 h-4 text-emerald-300" />
             </div>
@@ -110,8 +123,21 @@ export default function HeroSection({ onCreateQuiz, onExploreQuizzes }) {
             </div>
           </div>
 
-          {/* The Quiz Mockup Tablet Card (From Image) */}
-          <div className="w-full max-w-sm rounded-2xl bg-[#1c1916]/95 border border-white/10 p-5 shadow-2xl relative z-10">
+          {/* The Quiz Mockup Tablet Card with 3D Tilt */}
+          <div
+            ref={mockupRef}
+            className="w-full max-w-sm rounded-2xl bg-[#1c1916]/95 border border-white/15 p-5 shadow-2xl relative z-20 cursor-pointer transform-gpu overflow-hidden"
+            style={{ transformStyle: 'preserve-3d' }}
+          >
+            {/* Dynamic specular glare */}
+            <div
+              className="absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-300"
+              style={{
+                opacity: glareStyle.opacity,
+                background: `radial-gradient(circle 240px at ${glareStyle.x}% ${glareStyle.y}%, rgba(255,255,255,0.18), transparent 80%)`,
+              }}
+            />
+
             {/* Mockup Topbar */}
             <div className="flex items-center justify-between text-xs text-[#a39e94] mb-3">
               <span className="font-semibold text-slate-300">Question 1/10</span>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { BookOpen, Database, Brain, Play, Edit3, RefreshCw, Code, Trash2, Cloud, Copy, Check, RotateCw } from 'lucide-react';
+import { BookOpen, Layers, Brain, Play, Edit3, RefreshCw, Code, Trash2, Cloud, Copy, Check, RotateCw } from 'lucide-react';
+import { use3DTilt } from '../../utils/use3DTilt.js';
 
 export default function QuizCard({
   quiz,
@@ -16,6 +17,13 @@ export default function QuizCard({
   const [codeChangedMsg, setCodeChangedMsg] = useState(false);
   const qCount = quiz.questions?.length || 0;
   const quizCode = quiz.code || quiz.id;
+
+  const { cardRef, glareStyle } = use3DTilt({
+    max: 8,
+    perspective: 900,
+    scale: 1.015,
+    speed: 350,
+  });
 
   const handleCopyCode = async (e) => {
     e.stopPropagation();
@@ -51,7 +59,7 @@ export default function QuizCard({
       badgeBg: 'bg-rose-500/15 border-rose-500/30 text-rose-300',
     },
     {
-      icon: Database,
+      icon: Layers,
       iconBg: 'bg-[#12281d]',
       iconBorder: 'border-emerald-500/30',
       iconColor: 'text-emerald-400',
@@ -70,7 +78,19 @@ export default function QuizCard({
   const IconComponent = currentTheme.icon;
 
   return (
-    <div className="glass-card-hover p-6 sm:p-7 flex flex-col justify-between gap-5 relative group min-h-[200px]">
+    <div
+      ref={cardRef}
+      className="glass-card-hover p-6 sm:p-7 flex flex-col justify-between gap-5 relative group min-h-[200px] overflow-hidden transform-gpu"
+      style={{ transformStyle: 'preserve-3d' }}
+    >
+      {/* Specular 3D glare highlight */}
+      <div
+        className="absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-300 z-10"
+        style={{
+          opacity: glareStyle.opacity,
+          background: `radial-gradient(circle 260px at ${glareStyle.x}% ${glareStyle.y}%, rgba(255,255,255,0.12), transparent 75%)`,
+        }}
+      />
       {/* Top Details */}
       <div>
         <div className="flex items-start justify-between gap-4 mb-3">
@@ -85,7 +105,7 @@ export default function QuizCard({
                   {quiz.title}
                 </h3>
                 {quiz.isCloud && (
-                  <span title="Synced to Supabase Cloud">
+                  <span title="Saved to Cloud">
                     <Cloud className="w-4 h-4 text-caramel-400 shrink-0" />
                   </span>
                 )}
@@ -161,7 +181,7 @@ export default function QuizCard({
           </button>
           <button
             onClick={() => onViewJson(quiz)}
-            title="View JSON"
+            title="View Questions Content"
             className="p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-[#a39e94] hover:text-white transition-colors"
           >
             <Code className="w-4 h-4" />
