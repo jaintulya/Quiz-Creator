@@ -270,7 +270,7 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
                     {viewJson.title}
                   </h3>
                   <p className="text-xs text-[#8d877c]">
-                    {viewJson.questions?.length} Questions &bull; Raw JSON Format
+                    {viewJson.questions?.length} Questions &bull; Quiz Content Details
                   </p>
                 </div>
               </div>
@@ -316,7 +316,7 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
               <div>
                 <h3 className="text-lg font-bold text-white">Delete this quiz?</h3>
                 <p className="text-xs text-[#a39e94] mt-1 leading-relaxed">
-                  This action will permanently delete <strong className="text-white">"{deleteModal.title}"</strong> from your database and local storage.
+                  This action will permanently delete <strong className="text-white">"{deleteModal.title}"</strong> from your account and quiz library.
                 </p>
               </div>
             </div>

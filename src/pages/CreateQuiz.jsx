@@ -65,7 +65,7 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
   const handlePreviewQuestions = () => {
     setError('');
     if (!jsonText.trim()) {
-      setError('Please paste or write your questions JSON first before previewing.');
+      setError('Please enter your questions first before previewing.');
       setShowPreview(false);
       return;
     }
@@ -206,10 +206,10 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
       <div className="glass-card p-5 sm:p-7 border-white/10 space-y-4 animate-fade-in">
         <div>
           <label className="text-xs font-bold text-white uppercase tracking-wider block">
-            Questions Payload (JSON)
+            Quiz Questions & Answers
           </label>
           <p className="text-[11px] text-[#8d877c] mt-0.5">
-            Paste your questions JSON array. Supports string answers (e.g. <code>"correctAnswer": "Pressable"</code>) and 0-based option index numbers.
+            Enter or paste your multiple-choice questions below with their options and correct answers.
           </p>
         </div>
 

@@ -188,10 +188,10 @@ export function validateQuizJSON(jsonString, fallbackTitle = '') {
       } else if (Array.isArray(parsed.items)) {
         rawQuestions = parsed.items;
       } else {
-        return { valid: false, error: 'JSON object must contain a "questions" array, or be an array of questions.' };
+        return { valid: false, error: 'Questions must be formatted as a list of questions.' };
       }
     } else {
-      return { valid: false, error: 'JSON must be an array of questions or an object containing questions.' };
+      return { valid: false, error: 'Questions must be formatted as a list with choices.' };
     }
 
     if (rawQuestions.length === 0) {
@@ -203,7 +203,7 @@ export function validateQuizJSON(jsonString, fallbackTitle = '') {
     for (let i = 0; i < rawQuestions.length; i++) {
       const item = rawQuestions[i];
       if (!item || typeof item !== 'object') {
-        return { valid: false, error: `Question #${i + 1} must be a valid JSON object.` };
+        return { valid: false, error: `Question #${i + 1} is not formatted properly.` };
       }
 
       const qText = item.question || item.title || item.prompt || item.text;
@@ -213,7 +213,7 @@ export function validateQuizJSON(jsonString, fallbackTitle = '') {
 
       const rawOpts = item.options || item.choices || item.answers;
       if (!Array.isArray(rawOpts) || rawOpts.length < 2) {
-        return { valid: false, error: `Question #${i + 1} must have an "options" array with at least 2 choices.` };
+        return { valid: false, error: `Question #${i + 1} must have an "options" list with at least 2 choices.` };
       }
 
       const options = rawOpts.map((opt) => String(opt ?? '').trim());
@@ -264,6 +264,6 @@ export function validateQuizJSON(jsonString, fallbackTitle = '') {
       extractedTitle: detectedTitle || fallbackTitle || '',
     };
   } catch {
-    return { valid: false, error: 'Invalid JSON syntax. Please check for missing commas or quotes.' };
+    return { valid: false, error: 'Invalid question format. Please check for missing brackets, commas, or quotes.' };
   }
 }

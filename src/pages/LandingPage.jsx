@@ -87,20 +87,20 @@ const FEATURES = [
 ];
 
 const MARQUEE_ITEMS = [
-  'MCQ Format', 'AI Powered', 'Cloud Sync', 'Timed Mode', 'Smart Shuffle', 'JSON Import', 'Analytics', 'Multi-device', 'Study Streaks', 'Quick Review',
-  'MCQ Format', 'AI Powered', 'Cloud Sync', 'Timed Mode', 'Smart Shuffle', 'JSON Import', 'Analytics', 'Multi-device', 'Study Streaks', 'Quick Review',
+  'MCQ Format', 'AI Powered', 'Cloud Sync', 'Timed Mode', 'Smart Shuffle', 'Instant Import', 'Analytics', 'Multi-device', 'Study Streaks', 'Quick Review',
+  'MCQ Format', 'AI Powered', 'Cloud Sync', 'Timed Mode', 'Smart Shuffle', 'Instant Import', 'Analytics', 'Multi-device', 'Study Streaks', 'Quick Review',
 ];
 
 const TESTIMONIALS = [
   { name: 'Swati Vyas', role: 'BCA, 2nd Year', text: 'Paste notes → get quiz. That\'s it. I used QuizCraft for my entire OS semester and the results show.', avatar: 'S', score: '91%' },
-  { name: 'Devarsh Jain', role: 'BCA, 3rd Year', text: 'The AI prompt is genuinely clever. I just paste my lecture notes and get exam-grade MCQs instantly.', avatar: 'D', score: '88%' },
+  { name: 'Devarsh Jain', role: 'BCA, 3rd Year', text: 'The AI quiz generator is genuinely clever. I just enter my lecture topic and get exam-grade MCQs instantly.', avatar: 'D', score: '88%' },
   { name: 'Rishiraj Rathod', role: 'BECE, 2nd Year', text: 'Shuffle + timer mode changed how I prepare. I finish revision 3x faster now and score consistently.', avatar: 'R', score: '94%' },
 ];
 
 const STEPS = [
-  { n: '01', title: 'Get the Prompt', desc: 'Open Create Quiz, copy the pre-built AI prompt in one click.' },
-  { n: '02', title: 'Generate with AI', desc: 'Paste into ChatGPT / Gemini along with your notes. Get JSON output.' },
-  { n: '03', title: 'Paste & Play', desc: 'Paste the JSON into QuizCraft. Your quiz is live — instantly.' },
+  { n: '01', title: 'Choose Topic or Notes', desc: 'Type any subject or topic you want to test yourself on.' },
+  { n: '02', title: 'Generate with AI', desc: 'Our smart AI instantly crafts high-yield, multiple-choice questions.' },
+  { n: '03', title: 'Test & Master', desc: 'Take the quiz, track your accuracy, and review detailed explanations.' },
 ];
 
 export default function LandingPage({ onOpenAuth, onNavigate }) {
