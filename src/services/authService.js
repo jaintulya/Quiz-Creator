@@ -1,7 +1,10 @@
 // ─── QuizCraft Authentication Service ─────────────────────────────────────────
 // Provides rock-solid, production-ready Username + Password authentication
 // with client-side SHA-256 password hashing, unique username enforcement,
-// course profiles, password changes, and multi-session persistence.
+// course profiles, password changes, multi-session persistence, and
+// automatic 2-way cloud synchronization with Supabase's `app_users` table.
+
+import { supabase, isSupabaseConfigured } from './supabase.js';
 
 const ACCOUNTS_KEY = 'quizcraft_registered_accounts';
 const ACTIVE_USER_KEY = 'quizcraft_active_user';
@@ -68,7 +71,7 @@ export function getAllRegisteredAccounts() {
 }
 
 /**
- * Save registered accounts list
+ * Save registered accounts list locally
  */
 function saveAllRegisteredAccounts(accounts) {
   try {
@@ -79,16 +82,33 @@ function saveAllRegisteredAccounts(accounts) {
 }
 
 /**
- * Check if a username is already taken (case-insensitive)
+ * Check if a username is already taken (Local + Supabase)
  */
-export function isUsernameTaken(username) {
+export async function isUsernameTaken(username) {
   const normalized = username.trim().toLowerCase();
   const accounts = getAllRegisteredAccounts();
-  return accounts.some((acc) => acc.normalizedUsername === normalized);
+  const localMatch = accounts.some((acc) => acc.normalizedUsername === normalized);
+  if (localMatch) return true;
+
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('app_users')
+        .select('id')
+        .eq('normalized_username', normalized)
+        .maybeSingle();
+
+      if (!error && data) return true;
+    } catch {
+      // Table may not exist yet in user's Supabase
+    }
+  }
+
+  return false;
 }
 
 /**
- * Format a user account object into the standard user representation
+ * Format a user account object into standard user session representation
  */
 export function formatUserSession(account) {
   if (!account) return null;
@@ -104,7 +124,7 @@ export function formatUserSession(account) {
     displayName: effectiveDisplayName,
     normalizedUsername: account.normalizedUsername,
     course: account.course || '',
-    created_at: account.createdAt,
+    created_at: account.createdAt || account.created_at,
     authType: 'username',
     user_metadata: {
       username: account.username,
@@ -117,6 +137,36 @@ export function formatUserSession(account) {
       provider: 'username',
     },
   };
+}
+
+/**
+ * Sync all local accounts to Supabase `app_users` table
+ */
+export async function syncLocalAccountsToSupabase() {
+  if (!isSupabaseConfigured) return;
+  const accounts = getAllRegisteredAccounts();
+  if (!accounts || accounts.length === 0) return;
+
+  try {
+    for (const acc of accounts) {
+      const { error } = await supabase.from('app_users').upsert({
+        id: acc.id,
+        username: acc.username,
+        normalized_username: acc.normalizedUsername,
+        password_hash: acc.passwordHash,
+        full_name: acc.fullName || acc.full_name || '',
+        course: acc.course || '',
+        created_at: acc.createdAt || acc.created_at || new Date().toISOString(),
+        updated_at: acc.updatedAt || acc.updated_at || new Date().toISOString(),
+      }, { onConflict: 'normalized_username' });
+
+      if (error) {
+        console.warn('Notice syncing account to Supabase `app_users` table:', error.message || error);
+      }
+    }
+  } catch (err) {
+    console.warn('Sync accounts error:', err);
+  }
 }
 
 /**
@@ -137,8 +187,9 @@ export async function registerWithUsername(username, password, course) {
     throw new Error('Please select your course or program.');
   }
 
-  // 2. Uniqueness check
-  if (isUsernameTaken(username)) {
+  // 2. Uniqueness check across local and Supabase
+  const taken = await isUsernameTaken(username);
+  if (taken) {
     throw new Error('Username already exists. Please choose another username.');
   }
 
@@ -150,17 +201,39 @@ export async function registerWithUsername(username, password, course) {
     username: username.trim(),
     normalizedUsername: username.trim().toLowerCase(),
     passwordHash,
+    fullName: '',
     course: course.trim(),
     createdAt: now,
     updatedAt: now,
   };
 
-  // 4. Save account
+  // 4. Save account locally
   const accounts = getAllRegisteredAccounts();
   accounts.push(newAccount);
   saveAllRegisteredAccounts(accounts);
 
-  // 5. Set active user session
+  // 5. Cloud Sync: Insert into Supabase `app_users`
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('app_users').insert({
+        id: newAccount.id,
+        username: newAccount.username,
+        normalized_username: newAccount.normalizedUsername,
+        password_hash: newAccount.passwordHash,
+        full_name: '',
+        course: newAccount.course,
+        created_at: newAccount.createdAt,
+        updated_at: newAccount.updatedAt,
+      });
+      if (error) {
+        console.warn('Supabase app_users sync notice (run supabase/schema.sql in dashboard):', error.message || error);
+      }
+    } catch (err) {
+      console.warn('Supabase app_users sync notice (run supabase/schema.sql in dashboard):', err);
+    }
+  }
+
+  // 6. Set active user session
   const sessionUser = formatUserSession(newAccount);
   try {
     localStorage.setItem(ACTIVE_USER_KEY, JSON.stringify(sessionUser));
@@ -181,7 +254,36 @@ export async function loginWithUsername(username, password) {
 
   const normalized = username.trim().toLowerCase();
   const accounts = getAllRegisteredAccounts();
-  const account = accounts.find((acc) => acc.normalizedUsername === normalized);
+  let account = accounts.find((acc) => acc.normalizedUsername === normalized);
+
+  // If not found in localStorage, fetch from Supabase `app_users` table
+  if (!account && isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('app_users')
+        .select('*')
+        .eq('normalized_username', normalized)
+        .maybeSingle();
+
+      if (!error && data) {
+        account = {
+          id: data.id,
+          username: data.username,
+          normalizedUsername: data.normalized_username,
+          passwordHash: data.password_hash,
+          fullName: data.full_name || '',
+          course: data.course || '',
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+        };
+        // Cache in local accounts for offline resilience
+        accounts.push(account);
+        saveAllRegisteredAccounts(accounts);
+      }
+    } catch (err) {
+      console.warn('Supabase app_users lookup notice:', err);
+    }
+  }
 
   if (!account) {
     throw new Error('Incorrect username or password.');
@@ -229,9 +331,22 @@ export async function changeUserPassword(userId, currentPassword, newPassword) {
   }
 
   const newHash = await hashPassword(newPassword);
+  const now = new Date().toISOString();
   accounts[idx].passwordHash = newHash;
-  accounts[idx].updatedAt = new Date().toISOString();
+  accounts[idx].updatedAt = now;
   saveAllRegisteredAccounts(accounts);
+
+  // Sync to Supabase `app_users`
+  if (isSupabaseConfigured) {
+    try {
+      await supabase
+        .from('app_users')
+        .update({ password_hash: newHash, updated_at: now })
+        .eq('id', userId);
+    } catch (err) {
+      console.warn('Supabase password update sync notice:', err);
+    }
+  }
 
   return true;
 }
@@ -242,22 +357,35 @@ export async function changeUserPassword(userId, currentPassword, newPassword) {
 export async function updateUserProfile(userId, { course, full_name, fullName }) {
   const accounts = getAllRegisteredAccounts();
   const idx = accounts.findIndex((acc) => acc.id === userId);
-  if (idx === -1) return null;
+  const now = new Date().toISOString();
 
-  if (course !== undefined) {
-    accounts[idx].course = course.trim();
-  }
-
-  // Update fullName only - username is permanent and cannot be edited
   const nameToSet = fullName !== undefined ? fullName : full_name;
-  if (nameToSet !== undefined) {
-    accounts[idx].fullName = nameToSet.trim();
+
+  if (idx !== -1) {
+    if (course !== undefined) {
+      accounts[idx].course = course.trim();
+    }
+    if (nameToSet !== undefined) {
+      accounts[idx].fullName = nameToSet.trim();
+    }
+    accounts[idx].updatedAt = now;
+    saveAllRegisteredAccounts(accounts);
   }
 
-  accounts[idx].updatedAt = new Date().toISOString();
-  saveAllRegisteredAccounts(accounts);
+  // Cloud Sync to Supabase `app_users`
+  if (isSupabaseConfigured) {
+    try {
+      const updates = { updated_at: now };
+      if (course !== undefined) updates.course = course.trim();
+      if (nameToSet !== undefined) updates.full_name = nameToSet.trim();
+      await supabase.from('app_users').update(updates).eq('id', userId);
+    } catch (err) {
+      console.warn('Supabase app_users profile update notice:', err);
+    }
+  }
 
-  const updatedSession = formatUserSession(accounts[idx]);
+  const targetAccount = idx !== -1 ? accounts[idx] : { id: userId, fullName: nameToSet, course };
+  const updatedSession = formatUserSession(targetAccount);
   try {
     localStorage.setItem(ACTIVE_USER_KEY, JSON.stringify(updatedSession));
   } catch {}
