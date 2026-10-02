@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Trophy, CheckCircle2, XCircle, RotateCcw,
   BookOpen, ChevronLeft, ChevronRight, Star,
   TrendingUp, Target, Sparkles, Award, ArrowLeft,
-  Check, HelpCircle, Layers
+  Check, HelpCircle, Layers, Printer, Share2, Copy,
+  Zap, Heart, RotateCw
 } from 'lucide-react';
+import { launchConfetti } from '../utils/confetti.js';
+import { sounds } from '../utils/soundEffects.js';
+import { printQuizWorksheet } from '../services/aiQuizGenerator.js';
 
 function ScoreRing({ pct }) {
   const r = 46;
@@ -50,25 +54,65 @@ function ScoreRing({ pct }) {
   );
 }
 
-export default function ResultPage({ result, onRestart, onBack }) {
-  const { answers, correct, total, quiz } = result;
+export default function ResultPage({ result, onRestart, onReviewMistakes, onStudyFlashcards, onBack }) {
+  const { answers, correct, total, quiz, timeSeconds = 0, mode = 'classic', newlyUnlocked = [] } = result;
   const wrong = total - correct;
   const pct = Math.round((correct / total) * 100);
+
   const [reviewMode, setReviewMode] = useState(false);
   const [reviewIdx, setReviewIdx] = useState(0);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // Compute missed questions for "Review Mistakes" mode
+  const missedQuestions = quiz.questions.filter((q, i) => {
+    const correctText = typeof q.correctAnswer === 'number' ? q.options[q.correctAnswer] : q.correctAnswer;
+    return answers[i] !== correctText;
+  });
+
+  // Confetti on celebration
+  useEffect(() => {
+    if (pct >= 60) {
+      launchConfetti();
+      sounds.playFanfare();
+    }
+  }, [pct]);
 
   const grade =
-    pct >= 90 ? { label: 'Outstanding Mastery!', desc: 'You nailed virtually every question. Exceptional knowledge!', color: 'text-emerald-400', icon: '🏆', bg: 'from-emerald-500/20 to-teal-500/10', border: 'border-emerald-500/30' } :
-    pct >= 75 ? { label: 'Great Performance!', desc: 'Solid grasp of the core principles. Well done!', color: 'text-caramel-400', icon: '🎉', bg: 'from-caramel-500/20 to-amber-500/10', border: 'border-caramel-500/30' } :
-    pct >= 50 ? { label: 'Good Effort!', desc: 'You passed! A bit more practice will turn this into mastery.', color: 'text-amber-400', icon: '⚡', bg: 'from-amber-500/20 to-orange-500/10', border: 'border-amber-500/30' } :
-                { label: 'Keep Practicing!', desc: 'Review the explanations below to reinforce your understanding.', color: 'text-rose-400', icon: '💡', bg: 'from-rose-500/20 to-pink-500/10', border: 'border-rose-500/30' };
+    pct >= 90 ? { label: 'Outstanding Mastery!', desc: 'You nailed virtually every question. Exceptional knowledge!', color: 'text-emerald-400', icon: Trophy, bg: 'from-emerald-500/20 to-teal-500/10', border: 'border-emerald-500/30' } :
+    pct >= 75 ? { label: 'Great Performance!', desc: 'Solid grasp of the core principles. Well done!', color: 'text-[#f5ba72]', icon: Award, bg: 'from-[#f5ba72]/20 to-amber-500/10', border: 'border-[#f5ba72]/30' } :
+    pct >= 50 ? { label: 'Good Effort!', desc: 'You passed! A bit more practice will turn this into complete mastery.', color: 'text-amber-400', icon: Zap, bg: 'from-amber-500/20 to-orange-500/10', border: 'border-amber-500/30' } :
+                { label: 'Keep Practicing!', desc: 'Review the explanations below to reinforce your understanding.', color: 'text-rose-400', icon: BookOpen, bg: 'from-rose-500/20 to-pink-500/10', border: 'border-rose-500/30' };
 
+  // Copy shareable link
+  const handleShareQuiz = async () => {
+    try {
+      const shareUrl = `${window.location.origin}/play?quizId=${quiz.id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    } catch {
+      // fallback
+    }
+  };
+
+  // Launch review mistakes
+  const handleStartReviewMistakes = () => {
+    if (missedQuestions.length === 0) return;
+    const mistakesQuiz = {
+      ...quiz,
+      title: `${quiz.title} (Mistakes Review)`,
+      questions: missedQuestions,
+    };
+    if (onReviewMistakes) {
+      onReviewMistakes(mistakesQuiz);
+    }
+  };
 
   if (reviewMode) {
     const q = quiz.questions[reviewIdx];
+    const correctText = typeof q.correctAnswer === 'number' ? q.options[q.correctAnswer] : q.correctAnswer;
     const selected = answers[reviewIdx];
-    const isCorrect = selected === q.correctAnswer;
-    const letters = ['A', 'B', 'C', 'D'];
+    const isCorrect = selected === correctText;
 
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 animate-fade-in space-y-6">
@@ -77,7 +121,7 @@ export default function ResultPage({ result, onRestart, onBack }) {
           <div>
             <button
               onClick={() => setReviewMode(false)}
-              className="btn-ghost mb-2 -ml-2 text-xs"
+              className="btn-ghost mb-2 -ml-2 text-xs flex items-center gap-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Back to Score Summary
             </button>
@@ -91,8 +135,8 @@ export default function ResultPage({ result, onRestart, onBack }) {
         </div>
 
         {/* Question Selector Pills Grid */}
-        <div className="glass-card p-3 sm:p-4 border-white/10">
-          <div className="flex items-center justify-between mb-2.5 px-1">
+        <div className="glass-card p-4 border-white/10 space-y-3">
+          <div className="flex items-center justify-between px-1">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Question</span>
             <div className="flex items-center gap-3 text-[11px] text-slate-400">
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-emerald-500" /> Correct</span>
@@ -102,9 +146,10 @@ export default function ResultPage({ result, onRestart, onBack }) {
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-1 max-w-full">
-            {quiz.questions.map((_, i) => {
+            {quiz.questions.map((item, i) => {
               const ans = answers[i];
-              const isQCorrect = ans === quiz.questions[i].correctAnswer;
+              const itemCorrect = typeof item.correctAnswer === 'number' ? item.options[item.correctAnswer] : item.correctAnswer;
+              const isQCorrect = ans === itemCorrect;
               const isCurrent = i === reviewIdx;
 
               let style = 'bg-slate-800 text-slate-400 border-white/5';
@@ -116,7 +161,7 @@ export default function ResultPage({ result, onRestart, onBack }) {
                   key={i}
                   onClick={() => setReviewIdx(i)}
                   className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl border text-xs sm:text-sm font-bold shrink-0 transition-all duration-150 flex items-center justify-center
-                    ${isCurrent ? 'ring-2 ring-violet-400 ring-offset-2 ring-offset-slate-950 scale-105 font-extrabold text-white' : 'hover:scale-105'}
+                    ${isCurrent ? 'ring-2 ring-[#f5ba72] scale-105 font-extrabold text-white' : 'hover:scale-105'}
                     ${style}`}
                 >
                   {i + 1}
@@ -126,96 +171,86 @@ export default function ResultPage({ result, onRestart, onBack }) {
           </div>
         </div>
 
-        {/* Review Question Card */}
-        <div className="glass-card p-5 sm:p-8 space-y-5 sm:space-y-6 animate-slide-up border-white/10" key={reviewIdx}>
-          {/* Status Badge */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className={`badge border px-3 py-1 text-xs font-bold ${
-                isCorrect
-                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-glow-emerald'
-                  : !selected
-                    ? 'bg-slate-700/40 border-slate-600 text-slate-300'
-                    : 'bg-rose-500/20 border-rose-500/40 text-rose-300'
-              }`}>
-                {isCorrect ? '✓ Correct Answer' : !selected ? '⏭ Skipped Question' : '✗ Incorrect Answer'}
-              </span>
-            </div>
-            <span className="text-xs font-semibold text-slate-400">
+        {/* Selected Question Details */}
+        <div className="glass-card p-6 sm:p-8 border-white/10 space-y-6">
+          <div className="flex items-start justify-between gap-4">
+            <span className="text-xs font-bold text-[#f5ba72] uppercase tracking-wider">
               Question {reviewIdx + 1} of {total}
+            </span>
+            <span className={`text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 ${
+              isCorrect ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400' : 'bg-rose-500/15 border border-rose-500/30 text-rose-400'
+            }`}>
+              {isCorrect ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+              {isCorrect ? 'Correct Answer' : selected ? 'Incorrect Answer' : 'Skipped Question'}
             </span>
           </div>
 
-          {/* Question Text */}
-          <h2 className="text-slate-100 font-bold text-lg sm:text-xl leading-relaxed">
+          <h2 className="text-lg sm:text-xl font-bold text-white leading-relaxed">
             {q.question}
           </h2>
 
-          {/* Option Items */}
-          <div className="space-y-2.5">
-            {q.options.map((opt, i) => {
-              const isCorrectOpt = opt === q.correctAnswer;
-              const isSelectedOpt = opt === selected;
+          <div className="space-y-2.5 pt-2">
+            {q.options.map((opt, optIdx) => {
+              const isOptionCorrect = opt === correctText;
+              const isOptionSelected = opt === selected;
 
-              let optionClasses = 'p-3.5 sm:p-4 rounded-xl border text-sm sm:text-base font-medium flex items-center gap-3 transition-all ';
-              if (isCorrectOpt) {
-                optionClasses += 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-500/30';
-              } else if (isSelectedOpt && !isCorrectOpt) {
-                optionClasses += 'border-rose-500/50 bg-rose-500/15 text-rose-200 ring-1 ring-rose-500/30';
-              } else {
-                optionClasses += 'bg-white/[0.02] border-white/5 text-slate-400 opacity-60';
+              let cardStyle = 'bg-white/[0.02] border-white/5 text-[#a39e94]';
+              if (isOptionCorrect) {
+                cardStyle = 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 font-semibold ring-1 ring-emerald-400/40';
+              } else if (isOptionSelected) {
+                cardStyle = 'bg-rose-500/15 border-rose-500/40 text-rose-300 ring-1 ring-rose-400/40';
               }
 
               return (
-                <div key={i} className={optionClasses}>
-                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0
-                    ${isCorrectOpt ? 'bg-emerald-500 text-slate-950 font-extrabold' : isSelectedOpt ? 'bg-rose-500 text-white font-extrabold' : 'bg-white/10 text-slate-400'}`}>
-                    {letters[i]}
-                  </span>
-                  <span className="flex-1 text-left leading-relaxed">{opt}</span>
-                  {isCorrectOpt && (
-                    <div className="flex items-center gap-1 text-xs font-bold text-emerald-400 shrink-0">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span className="hidden sm:inline">Correct Choice</span>
-                    </div>
+                <div
+                  key={optIdx}
+                  className={`p-3.5 sm:p-4 rounded-xl border text-xs sm:text-sm flex items-center justify-between gap-3 ${cardStyle}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center font-bold text-xs shrink-0">
+                      {String.fromCharCode(65 + optIdx)}
+                    </span>
+                    <span>{opt}</span>
+                  </div>
+                  {isOptionCorrect && (
+                    <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1 shrink-0">
+                      <Check className="w-3.5 h-3.5" /> Correct Choice
+                    </span>
                   )}
-                  {isSelectedOpt && !isCorrectOpt && (
-                    <div className="flex items-center gap-1 text-xs font-bold text-rose-400 shrink-0">
-                      <XCircle className="w-4 h-4" />
-                      <span className="hidden sm:inline">Your Pick</span>
-                    </div>
+                  {isOptionSelected && !isOptionCorrect && (
+                    <span className="text-[11px] font-bold text-rose-400 shrink-0">
+                      Your Answer
+                    </span>
                   )}
                 </div>
               );
             })}
           </div>
 
-          {/* Explanation Box */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-violet-950/40 to-slate-900/60 border border-violet-500/25 space-y-1.5">
-            <div className="flex items-center gap-2 text-xs font-bold text-violet-300">
-              <Sparkles className="w-4 h-4 text-violet-400" />
-              <span>Explanation & Key Takeaway</span>
+          {q.explanation && (
+            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] space-y-1.5">
+              <span className="text-xs font-bold text-[#f5ba72] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Explanation
+              </span>
+              <p className="text-xs text-[#a39e94] leading-relaxed">{q.explanation}</p>
             </div>
-            <p className="text-slate-200 text-xs sm:text-sm leading-relaxed font-normal">
-              {q.explanation}
-            </p>
-          </div>
+          )}
 
           {/* Navigation Controls */}
-          <div className="flex items-center justify-between gap-3 pt-2">
+          <div className="flex items-center justify-between pt-2">
             <button
               onClick={() => setReviewIdx(Math.max(0, reviewIdx - 1))}
               disabled={reviewIdx === 0}
-              className="btn-secondary flex-1 sm:flex-initial py-2.5 px-5"
+              className="btn-secondary py-2 px-4 text-xs font-bold disabled:opacity-40"
             >
-              <ChevronLeft className="w-4 h-4" /> Previous
+              Previous
             </button>
             <button
               onClick={() => setReviewIdx(Math.min(total - 1, reviewIdx + 1))}
               disabled={reviewIdx === total - 1}
-              className="btn-secondary flex-1 sm:flex-initial py-2.5 px-5"
+              className="btn-primary py-2 px-4 text-xs font-bold disabled:opacity-40"
             >
-              Next <ChevronRight className="w-4 h-4" />
+              Next Question
             </button>
           </div>
         </div>
@@ -226,103 +261,195 @@ export default function ResultPage({ result, onRestart, onBack }) {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 animate-fade-in space-y-8">
 
-      {/* Hero Celebration Card */}
-      <div className={`glass-card p-6 sm:p-10 border rounded-3xl bg-gradient-to-br ${grade.bg} ${grade.border} shadow-2xl relative overflow-hidden text-center sm:text-left`}>
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none" />
+      {/* Newly Unlocked Badge Banner (Celebration) */}
+      {newlyUnlocked.length > 0 && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-[#f5ba72]/20 to-amber-500/20 border border-[#f5ba72]/40 flex items-center gap-3.5 animate-slide-up shadow-2xl">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/25 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+            <Trophy className="w-5 h-5" />
+          </div>
+          <div className="space-y-0.5">
+            <h3 className="text-sm font-extrabold text-white">
+              Achievement Unlocked: {newlyUnlocked.map(b => b.title).join(', ')}!
+            </h3>
+            <p className="text-xs text-[#f5ba72]">
+              {newlyUnlocked[0].description}
+            </p>
+          </div>
+        </div>
+      )}
 
-        <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-10">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 text-3xl sm:text-4xl mb-1">
-              <span>{grade.icon}</span>
-              <span className={`text-2xl sm:text-3xl font-extrabold ${grade.color}`}>
-                {grade.label}
-              </span>
+      {/* Main Score Glass Card */}
+      <div className={`glass-card p-6 sm:p-10 border ${grade.border} bg-gradient-to-br ${grade.bg} relative overflow-hidden space-y-8`}>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-8 text-center sm:text-left">
+          <div className="space-y-3">
+            <div className={`w-12 h-12 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 ${grade.color} shadow-lg mx-auto sm:mx-0`}>
+              <grade.icon className="w-6 h-6" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white">
-              {quiz.title}
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              {grade.label}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300/90 leading-relaxed max-w-lg">
+            <p className="text-xs sm:text-sm text-[#dedbd3] max-w-md leading-relaxed">
               {grade.desc}
+            </p>
+            <p className="text-xs text-[#8d877c]">
+              Quiz: <strong className="text-white">{quiz.title}</strong> • Completed in ~{timeSeconds}s
             </p>
           </div>
 
-          {/* Radial Score Ring */}
-          <div className="shrink-0">
-            <ScoreRing pct={pct} />
+          <ScoreRing pct={pct} />
+        </div>
+
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-white/[0.08]">
+          <div className="p-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-center">
+            <span className="text-xs font-semibold text-[#8d877c] block">Total Questions</span>
+            <span className="text-xl font-bold text-white">{total}</span>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+            <span className="text-xs font-semibold text-emerald-400 block">Correct Answers</span>
+            <span className="text-xl font-bold text-emerald-300">{correct}</span>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-center">
+            <span className="text-xs font-semibold text-rose-400 block">Incorrect</span>
+            <span className="text-xl font-bold text-rose-300">{wrong}</span>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-center">
+            <span className="text-xs font-semibold text-sky-400 block">Speed / Pace</span>
+            <span className="text-xl font-bold text-sky-300">{Math.round(timeSeconds / (total || 1))}s/Q</span>
           </div>
         </div>
       </div>
 
-      {/* 4-Card Metric Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="glass-panel p-4 sm:p-5 text-center border-white/10">
-          <div className="flex items-center justify-center gap-1.5 text-slate-400 text-xs font-semibold mb-1">
-            <Target className="w-4 h-4 text-violet-400" />
-            <span>Questions</span>
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-white">{total}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Total count</div>
-        </div>
+      {/* Action Hub */}
+      <div className="space-y-4">
+        <h2 className="text-xs font-bold text-white uppercase tracking-wider">
+          Next Learning Actions
+        </h2>
 
-        <div className="glass-panel p-4 sm:p-5 text-center border-white/10">
-          <div className="flex items-center justify-center gap-1.5 text-slate-400 text-xs font-semibold mb-1">
-            <TrendingUp className="w-4 h-4 text-indigo-400" />
-            <span>Score Ratio</span>
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-indigo-300">{correct}/{total}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">{pct}% efficiency</div>
-        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
 
-        <div className="glass-panel p-4 sm:p-5 text-center border-white/10">
-          <div className="flex items-center justify-center gap-1.5 text-emerald-400 text-xs font-semibold mb-1">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Correct</span>
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-300">{correct}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Correct answers</div>
-        </div>
+          {/* Action 1: Review Mistakes Only (If any missed) */}
+          {missedQuestions.length > 0 ? (
+            <button
+              onClick={handleStartReviewMistakes}
+              className="p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 hover:border-amber-500/40 text-left space-y-1.5 transition-all group hover:scale-[1.01]"
+            >
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
+                <Target className="w-4 h-4" />
+              </div>
+              <h3 className="text-sm font-bold text-white group-hover:text-[#f5ba72] transition-colors">
+                Re-attempt Mistakes
+              </h3>
+              <p className="text-xs text-[#a39e94]">
+                Practice only the {missedQuestions.length} questions you missed to master this topic.
+              </p>
+            </button>
+          ) : (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-left space-y-1.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <h3 className="text-sm font-bold text-emerald-400">Zero Mistakes!</h3>
+              <p className="text-xs text-[#a39e94]">You achieved 100% accuracy on this quiz.</p>
+            </div>
+          )}
 
-        <div className="glass-panel p-4 sm:p-5 text-center border-white/10">
-          <div className="flex items-center justify-center gap-1.5 text-rose-400 text-xs font-semibold mb-1">
-            <XCircle className="w-4 h-4" />
-            <span>Incorrect</span>
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-rose-300">{wrong}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Missed or skipped</div>
+          {/* Action 2: Detailed Answer Review */}
+          <button
+            onClick={() => { setReviewMode(true); setReviewIdx(0); }}
+            className="p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 text-left space-y-1.5 transition-all group hover:scale-[1.02]"
+          >
+            <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+              <BookOpen className="w-4 h-4 text-[#f5ba72]" />
+            </div>
+            <h3 className="text-sm font-bold text-white group-hover:text-[#f5ba72] transition-colors">
+              Detailed Explanations
+            </h3>
+            <p className="text-xs text-[#8d877c]">
+              Step-by-step breakdown of every question and official answers.
+            </p>
+          </button>
+
+          {/* Action 3: Flashcards Study Mode */}
+          <button
+            onClick={() => onStudyFlashcards && onStudyFlashcards(quiz)}
+            className="p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 text-left space-y-1.5 transition-all group hover:scale-[1.02]"
+          >
+            <div className="w-8 h-8 rounded-xl bg-sky-500/15 flex items-center justify-center text-sky-400 group-hover:scale-110 transition-transform">
+              <RotateCw className="w-4 h-4" />
+            </div>
+            <h3 className="text-sm font-bold text-white group-hover:text-sky-300 transition-colors">
+              Study as Flashcards
+            </h3>
+            <p className="text-xs text-[#8d877c]">
+              Interactive 3D flip card mode for rapid memory retention.
+            </p>
+          </button>
+
+          {/* Action 4: Retake Full Quiz */}
+          <button
+            onClick={() => onRestart(quiz)}
+            className="p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 text-left space-y-1.5 transition-all group hover:scale-[1.02]"
+          >
+            <div className="w-8 h-8 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
+              <RotateCcw className="w-4 h-4" />
+            </div>
+            <h3 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">
+              Retake Full Quiz
+            </h3>
+            <p className="text-xs text-[#8d877c]">
+              Attempt all {total} questions again with reshuffled options.
+            </p>
+          </button>
+
+          {/* Action 5: Print Worksheet / PDF */}
+          <button
+            onClick={() => printQuizWorksheet(quiz, true)}
+            className="p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 text-left space-y-1.5 transition-all group hover:scale-[1.02]"
+          >
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+              <Printer className="w-4 h-4" />
+            </div>
+            <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">
+              Print / Save as PDF
+            </h3>
+            <p className="text-xs text-[#8d877c]">
+              Generate printable exam worksheet with answer key.
+            </p>
+          </button>
+
+          {/* Action 6: Share Quiz */}
+          <button
+            onClick={handleShareQuiz}
+            className="p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 text-left space-y-1.5 transition-all group hover:scale-[1.02]"
+          >
+            <div className="w-8 h-8 rounded-xl bg-[#f5ba72]/15 flex items-center justify-center text-[#f5ba72] group-hover:scale-110 transition-transform">
+              {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
+            </div>
+            <h3 className="text-sm font-bold text-white group-hover:text-[#f5ba72] transition-colors">
+              {copiedLink ? 'Link Copied!' : 'Share Quiz Link'}
+            </h3>
+            <p className="text-xs text-[#8d877c]">
+              {copiedLink ? 'Direct quiz URL copied to clipboard!' : 'Send this quiz to classmates or friends.'}
+            </p>
+          </button>
+
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row items-center gap-3.5 pt-2">
+      {/* Back button */}
+      <div className="pt-2 text-center">
         <button
-          id="review-btn"
-          onClick={() => setReviewMode(true)}
-          className="btn-primary-lg w-full sm:flex-1 py-3.5 text-sm sm:text-base shadow-glow-sm"
-        >
-          <BookOpen className="w-5 h-5" />
-          <span>Review Detailed Answers</span>
-        </button>
-
-        <button
-          id="retake-btn"
-          onClick={onRestart}
-          className="btn-secondary w-full sm:w-auto px-6 py-3.5 text-sm sm:text-base"
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span>Retake Quiz</span>
-        </button>
-
-        <button
-          id="back-to-list-btn"
           onClick={onBack}
-          className="btn-secondary w-full sm:w-auto px-6 py-3.5 text-sm sm:text-base"
+          className="btn-ghost text-xs text-[#8d877c] hover:text-white"
         >
-          <ChevronLeft className="w-4 h-4" />
-          <span>All Quizzes</span>
+          ← Return to Dashboard / Quizzes
         </button>
       </div>
 
     </div>
   );
 }
-

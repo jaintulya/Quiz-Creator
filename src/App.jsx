@@ -10,6 +10,7 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import ErrorBoundary from './components/common/ErrorBoundary.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { fetchQuizById } from './services/quizService.js';
 
 function AppContent() {
   const { user, loading, isGuest, lastAuthEvent } = useAuth();
@@ -84,8 +85,36 @@ function AppContent() {
     }
   }, [user, isGuest, loading, currentPath, navigate]);
 
-  const handleStartQuiz = (quiz) => {
-    setActiveQuiz(quiz);
+  // Direct launch via URL query parameter (e.g. /play?quizId=...)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const quizId = params.get('quizId');
+    if (quizId && !activeQuiz) {
+      fetchQuizById(quizId, user?.id).then((found) => {
+        if (found) {
+          setActiveQuiz(found);
+          setQuizResult(null);
+          navigate('/play');
+        }
+      });
+    }
+  }, [user, activeQuiz, navigate]);
+
+  const handleStartQuiz = (quiz, mode = null) => {
+    setActiveQuiz(mode ? { ...quiz, initialMode: mode } : quiz);
+    setQuizResult(null);
+    navigate('/play');
+  };
+
+  const handleReviewMistakes = (mistakesQuiz) => {
+    setActiveQuiz({ ...mistakesQuiz, initialMode: 'instant' });
+    setQuizResult(null);
+    navigate('/play');
+  };
+
+  const handleStudyFlashcards = (targetQuiz) => {
+    setActiveQuiz({ ...targetQuiz, initialMode: 'flashcards' });
     setQuizResult(null);
     navigate('/play');
   };
@@ -100,8 +129,11 @@ function AppContent() {
     navigate('/result');
   };
 
-  const handleRestart = () => {
+  const handleRestart = (quiz) => {
     setQuizResult(null);
+    if (quiz) {
+      setActiveQuiz(quiz);
+    }
     navigate('/play');
   };
 
@@ -204,6 +236,7 @@ function AppContent() {
           {currentPath === '/play' && activeQuiz && (
             <QuizPlayer
               quiz={activeQuiz}
+              initialMode={activeQuiz.initialMode || null}
               onFinish={handleFinish}
               onBack={() => navigate((user || isGuest) ? '/my-quizzes' : '/')}
             />
@@ -213,9 +246,41 @@ function AppContent() {
           {currentPath === '/result' && quizResult && (
             <ResultPage
               result={quizResult}
-              onRestart={handleRestart}
+              onRestart={(q) => handleRestart(q || quizResult.quiz)}
+              onReviewMistakes={handleReviewMistakes}
+              onStudyFlashcards={handleStudyFlashcards}
               onBack={() => navigate((user || isGuest) ? '/my-quizzes' : '/')}
             />
+          )}
+
+          {/* Fallback if directly accessed /play without an active quiz */}
+          {currentPath === '/play' && !activeQuiz && (
+            <div className="max-w-md mx-auto py-24 text-center px-4">
+              <div className="glass-card p-8 border-white/10 space-y-4">
+                <p className="text-sm text-[#a39e94]">No active quiz is currently selected.</p>
+                <button
+                  onClick={() => navigate((user || isGuest) ? '/my-quizzes' : '/')}
+                  className="btn-primary py-2 px-6 text-xs font-bold"
+                >
+                  Browse Quizzes
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Fallback if directly accessed /result without a completed quiz */}
+          {currentPath === '/result' && !quizResult && (
+            <div className="max-w-md mx-auto py-24 text-center px-4">
+              <div className="glass-card p-8 border-white/10 space-y-4">
+                <p className="text-sm text-[#a39e94]">No quiz score summary available yet.</p>
+                <button
+                  onClick={() => navigate((user || isGuest) ? '/dashboard' : '/')}
+                  className="btn-primary py-2 px-6 text-xs font-bold"
+                >
+                  Back to Dashboard
+                </button>
+              </div>
+            </div>
           )}
         </main>
 

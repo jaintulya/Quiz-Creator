@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
   User, Mail, BookOpen, Trophy, LogOut,
-  CheckCircle2, BookMarked, KeyRound, Save, X, AlertCircle, Eye, EyeOff, Lock
+  CheckCircle2, BookMarked, KeyRound, Save, X, AlertCircle, Eye, EyeOff, Lock, Award
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { fetchAllQuizzes } from '../services/quizService.js';
+import { getGamificationData, BADGES_CATALOG } from '../services/gamificationService.js';
+import BadgeIcon from '../components/common/BadgeIcon.jsx';
 
 const COURSE_OPTIONS = [
   'BCA', 'MCA', 'BCS', 'BECE', 'B.Tech (CS)', 'B.Tech (EC)', 'B.Tech (IT)',
@@ -463,6 +465,61 @@ export default function ProfilePage({ onNavigate }) {
           >
             <span>Create Quiz</span>
           </button>
+        </div>
+      </div>
+
+      {/* ── Badges & Achievements Showcase ── */}
+      <div className="glass-card p-5 sm:p-6 border-white/10 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Award className="w-4 h-4 text-[#f5ba72]" />
+            <h2 className="text-sm font-bold text-white">Achievements & Badges</h2>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[#f5ba72]">
+            {Object.keys(getGamificationData(user?.id)?.unlockedBadges || {}).length} / {BADGES_CATALOG.length} Unlocked
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {BADGES_CATALOG.map((badge) => {
+            const isUnlocked = Boolean(getGamificationData(user?.id)?.unlockedBadges?.[badge.id]);
+            return (
+              <div
+                key={badge.id}
+                className={`p-3 rounded-xl border transition-colors flex items-start gap-3 ${
+                  isUnlocked
+                    ? 'bg-[#181512] border-white/[0.08] text-white hover:border-white/20'
+                    : 'bg-white/[0.015] border-white/[0.04] opacity-55 text-[#8d877c]'
+                }`}
+              >
+                <BadgeIcon id={badge.id} isUnlocked={isUnlocked} size="md" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <h4 className={`text-xs font-bold truncate ${isUnlocked ? 'text-white' : 'text-[#a39e94]'}`}>
+                      {badge.title}
+                    </h4>
+                    <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[#8d877c]">
+                      {badge.tier}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#8d877c] line-clamp-2 mt-0.5 leading-snug">
+                    {badge.description}
+                  </p>
+                  <div className="mt-1.5 flex items-center gap-1 text-[10px]">
+                    {isUnlocked ? (
+                      <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Unlocked
+                      </span>
+                    ) : (
+                      <span className="text-[#6c665d] flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Locked
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
