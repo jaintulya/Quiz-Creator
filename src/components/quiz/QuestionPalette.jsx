@@ -47,7 +47,7 @@ export default function QuestionPalette({ total, answers, marked, current, onJum
       </div>
 
       {/* Grid of Question Buttons (Bounded height with scroll for large sets of questions) */}
-      <div className="grid grid-cols-5 gap-2 max-h-48 sm:max-h-56 overflow-y-auto pr-1.5 py-1 scrollbar-thin">
+      <div className="grid grid-cols-5 gap-2.5 max-h-48 sm:max-h-56 overflow-y-auto p-2 scrollbar-thin">
         {Array.from({ length: total }).map((_, i) => {
           const isAnswered = answers[i] !== undefined && answers[i] !== null;
           const isMarked = marked.includes(i);

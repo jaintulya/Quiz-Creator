@@ -546,9 +546,11 @@
     box-shadow: 0 0 18px rgba(245,158,11,0.35);
   }
   .palette-btn-current {
-    background-color: #ffffff; color: #161412;
-    border-color: #ffffff; font-weight: 800;
-    outline: 2px solid #F5BA72; outline-offset: 2px;
+    background-color: #ffffff;
+    color: #161412;
+    border-color: #F5BA72;
+    font-weight: 800;
+    box-shadow: 0 0 0 2px #0f0e0d, 0 0 0 4px #F5BA72;
   }
   .palette-btn-unanswered {
     background-color: rgba(255,255,255,0.04);

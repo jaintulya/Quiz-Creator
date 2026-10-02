@@ -83,11 +83,12 @@ export default function ResultPage({ result, onRestart, onReviewMistakes, onStud
     pct >= 50 ? { label: 'Good Effort!', desc: 'You passed! A bit more practice will turn this into complete mastery.', color: 'text-amber-400', icon: Zap, bg: 'from-amber-500/20 to-orange-500/10', border: 'border-amber-500/30' } :
                 { label: 'Keep Practicing!', desc: 'Review the explanations below to reinforce your understanding.', color: 'text-rose-400', icon: BookOpen, bg: 'from-rose-500/20 to-pink-500/10', border: 'border-rose-500/30' };
 
-  // Copy shareable link
-  const handleShareQuiz = async () => {
+  const quizCode = quiz.code || quiz.id;
+
+  // Copy unique quiz code
+  const handleCopyQuizCode = async () => {
     try {
-      const shareUrl = `${window.location.origin}/play?quizId=${quiz.id}`;
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(quizCode);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2500);
     } catch {
@@ -145,7 +146,7 @@ export default function ResultPage({ result, onRestart, onReviewMistakes, onStud
             </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-1 max-w-full">
+          <div className="flex gap-3 overflow-x-auto py-3 px-2 max-w-full scrollbar-thin items-center">
             {quiz.questions.map((item, i) => {
               const ans = answers[i];
               const itemCorrect = typeof item.correctAnswer === 'number' ? item.options[item.correctAnswer] : item.correctAnswer;
@@ -161,7 +162,7 @@ export default function ResultPage({ result, onRestart, onReviewMistakes, onStud
                   key={i}
                   onClick={() => setReviewIdx(i)}
                   className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl border text-xs sm:text-sm font-bold shrink-0 transition-all duration-150 flex items-center justify-center
-                    ${isCurrent ? 'ring-2 ring-[#f5ba72] scale-105 font-extrabold text-white' : 'hover:scale-105'}
+                    ${isCurrent ? 'border-[#f5ba72] bg-[#f5ba72]/20 text-white shadow-[0_0_0_2px_#0f0e0d,0_0_0_4px_#f5ba72] font-black scale-105' : 'hover:scale-105'}
                     ${style}`}
                 >
                   {i + 1}
@@ -421,19 +422,24 @@ export default function ResultPage({ result, onRestart, onReviewMistakes, onStud
             </p>
           </button>
 
-          {/* Action 6: Share Quiz */}
+          {/* Action 6: Copy Quiz Code */}
           <button
-            onClick={handleShareQuiz}
+            onClick={handleCopyQuizCode}
             className="p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 text-left space-y-1.5 transition-all group hover:scale-[1.02]"
           >
-            <div className="w-8 h-8 rounded-xl bg-[#f5ba72]/15 flex items-center justify-center text-[#f5ba72] group-hover:scale-110 transition-transform">
-              {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
+            <div className="flex items-center justify-between">
+              <div className="w-8 h-8 rounded-xl bg-[#f5ba72]/15 flex items-center justify-center text-[#f5ba72] group-hover:scale-110 transition-transform">
+                {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              </div>
+              <span className="font-mono text-xs font-bold text-amber-300 px-2 py-0.5 rounded bg-white/5 border border-white/10">
+                {quizCode}
+              </span>
             </div>
             <h3 className="text-sm font-bold text-white group-hover:text-[#f5ba72] transition-colors">
-              {copiedLink ? 'Link Copied!' : 'Share Quiz Link'}
+              {copiedLink ? 'Code Copied!' : 'Copy Quiz Code'}
             </h3>
             <p className="text-xs text-[#8d877c]">
-              {copiedLink ? 'Direct quiz URL copied to clipboard!' : 'Send this quiz to classmates or friends.'}
+              {copiedLink ? `Code "${quizCode}" copied to clipboard!` : 'Give this code to friends to launch from their Dashboard.'}
             </p>
           </button>
 
