@@ -4,29 +4,31 @@ import {
   getQuizById as getLocalQuizById,
   saveQuiz as saveLocalQuiz,
   updateQuiz as updateLocalQuiz,
+  updateLocalQuizId,
   updateQuizTitle as updateLocalQuizTitle,
   deleteQuiz as deleteLocalQuiz,
+  generateQuizCode,
   getStorageKey,
 } from './storage.js';
 
-// ─── Fetch Single Quiz by ID (Local + Supabase) ─────────────────────────────
+// ─── Fetch Single Quiz by ID or Unique Code (Cloud First) ───────────────────
 export async function fetchQuizById(id, userId = null) {
-  // First try local storage (searches current user and all keys)
-  const local = getLocalQuizById(id, userId);
-  if (local) return local;
+  if (!id) return null;
+  const cleanId = id.trim();
 
-  // Next, try Supabase if configured
+  // If Supabase is configured, check cloud database ground truth first
   if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase
         .from('quizzes')
         .select('*')
-        .eq('id', id)
+        .ilike('id', cleanId)
         .maybeSingle();
 
       if (!error && data) {
         return {
           id: data.id,
+          code: data.id,
           title: data.title,
           description: data.description || '',
           category: data.category || 'General',
@@ -36,13 +38,18 @@ export async function fetchQuizById(id, userId = null) {
           userId: data.user_id,
           isCloud: true,
         };
+      } else if (!error && !data) {
+        // Quiz was deleted by creator in cloud! Purge local cached copy so it cannot linger
+        deleteLocalQuiz(cleanId, userId);
+        return null;
       }
     } catch (err) {
       console.warn('Cloud fetch single quiz failed:', err);
     }
   }
 
-  return null;
+  // Fallback to local storage only if offline or unconfigured
+  return getLocalQuizById(cleanId, userId);
 }
 
 // ─── Fetch Quizzes (Supabase with user-scoped local fallback) ───────────────
@@ -89,8 +96,41 @@ export async function fetchAllQuizzes(userId = null) {
     }
   }
 
-  // Return isolated local quizzes for this user
-  return getLocalQuizzes(userId);
+  // Return isolated local quizzes for this user (never include foreign/shared quizzes)
+  const localList = getLocalQuizzes(userId);
+  return localList.filter((q) => !q.isShared && (!q.userId || q.userId === userId));
+}
+
+// ─── Regenerate Quiz Code (Owner Only) ──────────────────────────────────────
+export async function regenerateQuizCode(oldId, userId = null) {
+  if (!oldId) throw new Error('Quiz ID is required');
+  const newCode = generateQuizCode();
+
+  // 1. Update in local storage
+  updateLocalQuizId(oldId, newCode, userId);
+
+  // 2. Update in Supabase cloud database
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('quizzes')
+        .update({
+          id: newCode,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', oldId)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Supabase code update error:', error.message || error);
+      }
+    } catch (err) {
+      console.warn('Cloud code update failed:', err);
+    }
+  }
+
+  return newCode;
 }
 
 // ─── Save New Quiz (Local + Cloud) ──────────────────────────────────────────

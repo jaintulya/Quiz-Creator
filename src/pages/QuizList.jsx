@@ -6,7 +6,7 @@ import {
 import StatCard from '../components/ui/StatCard.jsx';
 import QuizCard from '../components/ui/QuizCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { fetchAllQuizzes, deleteQuizRecord, updateExistingQuiz } from '../services/quizService.js';
+import { fetchAllQuizzes, deleteQuizRecord, updateExistingQuiz, regenerateQuizCode } from '../services/quizService.js';
 
 export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAuth }) {
   const { user, isGuest } = useAuth();
@@ -97,6 +97,17 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
       await deleteQuizRecord(deleteModal.id, user?.id);
       await loadQuizzes();
       setDeleteModal(null);
+    }
+  };
+
+  const handleRegenerateCode = async (quiz) => {
+    try {
+      const updated = await regenerateQuizCode(quiz.id, user?.id);
+      await loadQuizzes();
+      return updated;
+    } catch (err) {
+      console.error('Failed to regenerate quiz code:', err);
+      throw err;
     }
   };
 
@@ -209,6 +220,7 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
               onShuffle={handleShuffle}
               onViewJson={setViewJson}
               onDelete={setDeleteModal}
+              onRegenerateCode={handleRegenerateCode}
             />
           ))}
         </div>

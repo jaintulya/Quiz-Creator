@@ -1,4 +1,5 @@
-import { BookOpen, Database, Brain, Play, Edit3, RefreshCw, Code, Trash2, Cloud } from 'lucide-react';
+import { useState } from 'react';
+import { BookOpen, Database, Brain, Play, Edit3, RefreshCw, Code, Trash2, Cloud, Copy, Check, RotateCw } from 'lucide-react';
 
 export default function QuizCard({
   quiz,
@@ -8,8 +9,37 @@ export default function QuizCard({
   onShuffle,
   onViewJson,
   onDelete,
+  onRegenerateCode,
 }) {
+  const [copied, setCopied] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [codeChangedMsg, setCodeChangedMsg] = useState(false);
   const qCount = quiz.questions?.length || 0;
+  const quizCode = quiz.code || quiz.id;
+
+  const handleCopyCode = async (e) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(quizCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
+  const handleRegenerate = async (e) => {
+    e.stopPropagation();
+    if (!onRegenerateCode || regenerating) return;
+    setRegenerating(true);
+    try {
+      await onRegenerateCode(quiz);
+      setCodeChangedMsg(true);
+      setTimeout(() => setCodeChangedMsg(false), 2500);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   // Themes with distinct accent colors
   const themes = [
@@ -63,6 +93,37 @@ export default function QuizCard({
               <p className="text-xs sm:text-sm text-[#a39e94] line-clamp-2 mt-1 leading-relaxed">
                 {quiz.description || 'Interactive multiple choice quiz with detailed answers'}
               </p>
+
+              {/* Unique Quiz Code Badge */}
+              <div className="flex items-center gap-2 mt-2.5">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-xs">
+                  <span className="text-[#8d877c] font-medium text-[11px]">Code:</span>
+                  <span className="font-mono font-bold text-amber-300 text-[11px] tracking-wider">{quizCode}</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyCode}
+                    title="Copy Quiz Code"
+                    aria-label="Copy Quiz Code"
+                    className="p-0.5 rounded hover:bg-white/10 text-[#a39e94] hover:text-white transition-colors ml-0.5"
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                  {onRegenerateCode && (
+                    <button
+                      type="button"
+                      onClick={handleRegenerate}
+                      disabled={regenerating}
+                      title="Regenerate New Code (Old code will expire)"
+                      aria-label="Regenerate Quiz Code"
+                      className="p-0.5 rounded hover:bg-white/10 text-[#a39e94] hover:text-amber-400 transition-colors ml-0.5 disabled:opacity-50"
+                    >
+                      <RotateCw className={`w-3.5 h-3.5 ${regenerating ? 'animate-spin text-amber-400' : ''}`} />
+                    </button>
+                  )}
+                  {copied && <span className="text-[10px] text-emerald-400 font-semibold animate-fade-in">Copied!</span>}
+                  {codeChangedMsg && <span className="text-[10px] text-amber-400 font-semibold animate-fade-in">New Code!</span>}
+                </div>
+              </div>
             </div>
           </div>
 

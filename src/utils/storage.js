@@ -25,10 +25,22 @@ export function getAllQuizzes(userId = null) {
   }
 }
 
-// ─── Get a single quiz by id ───────────────────────────────────────────────────
+// ─── Generate clean unique 6-character Quiz Code (e.g. QC-7K2M) ───────────────
+export function generateQuizCode() {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let rand = '';
+  for (let i = 0; i < 4; i++) {
+    rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `QC-${rand}`;
+}
+
+// ─── Get a single quiz by id or code ───────────────────────────────────────────
 export function getQuizById(id, userId = null) {
+  if (!id) return null;
+  const clean = id.trim().toLowerCase();
   const quizzes = getAllQuizzes(userId);
-  const found = quizzes.find((q) => q.id === id);
+  const found = quizzes.find((q) => q.id?.toLowerCase() === clean || q.code?.toLowerCase() === clean);
   if (found) return found;
 
   // Search across other quiz storage keys (e.g. guest or other account)
@@ -40,7 +52,7 @@ export function getQuizById(id, userId = null) {
         if (raw) {
           const list = JSON.parse(raw);
           if (Array.isArray(list)) {
-            const match = list.find((q) => q.id === id || q.id.includes(id));
+            const match = list.find((q) => q.id?.toLowerCase() === clean || q.code?.toLowerCase() === clean);
             if (match) return match;
           }
         }
@@ -54,8 +66,10 @@ export function getQuizById(id, userId = null) {
 export function saveQuiz(title, questions, userId = null) {
   const key = getStorageKey(userId);
   const quizzes = getAllQuizzes(userId);
+  const code = generateQuizCode();
   const newQuiz = {
-    id: `quiz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    id: code,
+    code: code,
     title: title.trim(),
     questions,
     createdAt: new Date().toISOString(),
@@ -70,11 +84,34 @@ export function saveQuiz(title, questions, userId = null) {
   return newQuiz;
 }
 
+// ─── Update Quiz ID / Unique Code ───────────────────────────────────────────
+export function updateLocalQuizId(oldId, newId, userId = null) {
+  const cleanOld = oldId?.trim().toLowerCase();
+  const key = getStorageKey(userId);
+  const quizzes = getAllQuizzes(userId);
+  const idx = quizzes.findIndex((q) => q.id?.toLowerCase() === cleanOld || q.code?.toLowerCase() === cleanOld);
+  if (idx !== -1) {
+    quizzes[idx] = {
+      ...quizzes[idx],
+      id: newId,
+      code: newId,
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem(key, JSON.stringify(quizzes));
+    } catch (err) {
+      console.warn('Storage update code failed:', err);
+    }
+    return quizzes[idx];
+  }
+  return null;
+}
+
 // ─── Update an existing quiz ───────────────────────────────────────────────────
 export function updateQuiz(id, title, questions, userId = null) {
   const key = getStorageKey(userId);
   const quizzes = getAllQuizzes(userId);
-  const idx = quizzes.findIndex((q) => q.id === id);
+  const idx = quizzes.findIndex((q) => q.id === id || q.code === id);
   if (idx === -1) return null;
   quizzes[idx] = { ...quizzes[idx], title: title.trim(), questions, updatedAt: new Date().toISOString() };
   try {
@@ -87,13 +124,34 @@ export function updateQuiz(id, title, questions, userId = null) {
 
 // ─── Delete a quiz ─────────────────────────────────────────────────────────────
 export function deleteQuiz(id, userId = null) {
+  if (!id) return;
+  const clean = id.trim().toLowerCase();
   const key = getStorageKey(userId);
-  const quizzes = getAllQuizzes(userId).filter((q) => q.id !== id);
+  const quizzes = getAllQuizzes(userId).filter((q) => q.id?.toLowerCase() !== clean && q.code?.toLowerCase() !== clean);
   try {
     localStorage.setItem(key, JSON.stringify(quizzes));
   } catch (err) {
     console.warn('Storage delete failed:', err);
   }
+
+  // Purge from any other storage keys as well so deleted quiz never revives
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('quizcraft_quizzes')) {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            const purged = list.filter((q) => q.id?.toLowerCase() !== clean && q.code?.toLowerCase() !== clean);
+            if (purged.length !== list.length) {
+              localStorage.setItem(k, JSON.stringify(purged));
+            }
+          }
+        }
+      }
+    }
+  } catch {}
 }
 
 // ─── Update only quiz title ─────────────────────────────────────────────────
