@@ -133,7 +133,21 @@ export default function LoginPage({ onNavigate, promptMessage = '' }) {
           {error && (
             <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2.5 animate-fade-in leading-relaxed">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{error}</span>
+              <div className="flex-1">
+                <span>{error}</span>
+                {error.toLowerCase().includes('not registered') && mode === 'login' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('register');
+                      setError('');
+                    }}
+                    className="block mt-1 font-bold text-amber-300 hover:text-amber-200 underline transition-colors"
+                  >
+                    Click here to Create an Account &rarr;
+                  </button>
+                )}
+              </div>
             </div>
           )}
           {success && (

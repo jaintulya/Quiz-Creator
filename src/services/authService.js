@@ -285,13 +285,44 @@ export async function loginWithUsername(username, password) {
     }
   }
 
+  // 1. Username is not in database or locally registered
   if (!account) {
-    throw new Error('Incorrect username or password.');
+    throw new Error('Username not registered. Please check the username or sign up.');
   }
 
+  // 2. Password verification
   const hash = await hashPassword(password);
   if (hash !== account.passwordHash) {
-    throw new Error('Incorrect username or password.');
+    // If locally cached password hash did not match, check live Supabase ground truth
+    // (handles password changes made on other devices or directly in the cloud)
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('app_users')
+          .select('*')
+          .eq('normalized_username', normalized)
+          .maybeSingle();
+
+        if (!error && data) {
+          if (data.password_hash === hash) {
+            // Password matches latest cloud record, sync local cache
+            account.passwordHash = data.password_hash;
+            account.fullName = data.full_name || '';
+            account.course = data.course || '';
+            saveAllRegisteredAccounts(accounts);
+          } else {
+            throw new Error('Incorrect password. Please try again.');
+          }
+        } else {
+          throw new Error('Incorrect password. Please try again.');
+        }
+      } catch (err) {
+        if (err.message === 'Incorrect password. Please try again.') throw err;
+        throw new Error('Incorrect password. Please try again.');
+      }
+    } else {
+      throw new Error('Incorrect password. Please try again.');
+    }
   }
 
   const sessionUser = formatUserSession(account);
