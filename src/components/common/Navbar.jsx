@@ -1,4 +1,4 @@
-import { Brain, BookOpen, Plus, LayoutDashboard } from 'lucide-react';
+import { Brain, BookOpen, Plus, LayoutDashboard, Trophy } from 'lucide-react';
 import UserMenu from '../auth/UserMenu.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
@@ -62,6 +62,7 @@ export default function Navbar({ currentPage, onNavigate, onOpenAuth }) {
             <>
               {navLink('dashboard', 'Home', LayoutDashboard)}
               {navLink('list', 'My Quizzes', BookOpen)}
+              {navLink('results', 'Results', Trophy)}
             </>
           )}
 

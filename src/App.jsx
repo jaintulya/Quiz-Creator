@@ -8,6 +8,7 @@ import LandingPage from './pages/LandingPage.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import ResultsHistoryPage from './pages/ResultsHistoryPage.jsx';
 import ErrorBoundary from './components/common/ErrorBoundary.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { fetchQuizById } from './services/quizService.js';
@@ -38,6 +39,7 @@ function AppContent() {
     else if (target === 'profile') path = '/profile';
     else if (target === 'play') path = '/play';
     else if (target === 'result') path = '/result';
+    else if (target === 'results' || target === 'history') path = '/results';
     else if (target === 'login') path = '/login';
     if (options.promptMessage !== undefined) {
       setAuthPromptMessage(options.promptMessage);
@@ -78,7 +80,7 @@ function AppContent() {
   // Protected route guard: unauthenticated users redirect to /login
   useEffect(() => {
     if (!user && !isGuest && !loading) {
-      const protectedPaths = ['/dashboard', '/my-quizzes', '/create-quiz', '/profile', '/edit'];
+      const protectedPaths = ['/dashboard', '/my-quizzes', '/create-quiz', '/profile', '/edit', '/results'];
       if (protectedPaths.includes(currentPath)) {
         navigate('/login', { promptMessage: 'Please sign in or continue as guest to access.' });
       }
@@ -129,6 +131,11 @@ function AppContent() {
     navigate('/result');
   };
 
+  const handleReviewResult = (resultRecord) => {
+    setQuizResult(resultRecord);
+    navigate('/result');
+  };
+
   const handleRestart = (quiz) => {
     setQuizResult(null);
     if (quiz) {
@@ -145,6 +152,7 @@ function AppContent() {
     if (currentPath === '/my-quizzes') return 'list';
     if (currentPath === '/dashboard') return 'dashboard';
     if (currentPath === '/profile') return 'profile';
+    if (currentPath === '/results') return 'results';
     if (currentPath === '/login') return 'login';
     return 'home';
   };
@@ -232,6 +240,15 @@ function AppContent() {
             <ProfilePage onNavigate={navigate} />
           )}
 
+          {/* ── PROTECTED ROUTE: /results ── */}
+          {currentPath === '/results' && (user || isGuest) && (
+            <ResultsHistoryPage
+              onNavigate={navigate}
+              onReviewResult={handleReviewResult}
+              onRetakeQuiz={handleStartQuiz}
+            />
+          )}
+
           {/* ── QUIZ PLAYER: /play ── */}
           {currentPath === '/play' && activeQuiz && (
             <QuizPlayer
@@ -296,6 +313,8 @@ function AppContent() {
                     <button onClick={() => navigate('/create-quiz')} className="hover:text-[#f5ba72] transition-colors">Create Quiz</button>
                     <span>&bull;</span>
                     <button onClick={() => navigate('/my-quizzes')} className="hover:text-[#f5ba72] transition-colors">My Quizzes</button>
+                    <span>&bull;</span>
+                    <button onClick={() => navigate('/results')} className="hover:text-[#f5ba72] transition-colors">Results</button>
                     <span>&bull;</span>
                     <button onClick={() => navigate('/profile')} className="hover:text-[#f5ba72] transition-colors">Profile</button>
                   </>

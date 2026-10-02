@@ -10,6 +10,7 @@ import QuestionPalette from '../components/quiz/QuestionPalette.jsx';
 import Timer from '../components/quiz/Timer.jsx';
 import { sounds } from '../utils/soundEffects.js';
 import { recordQuizSession } from '../services/gamificationService.js';
+import { saveQuizResult } from '../services/resultsService.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 function shuffleArray(array) {
@@ -223,7 +224,12 @@ export default function QuizPlayer({ quiz, initialMode = null, onFinish, onBack 
       livesLeft: lives,
     });
 
-    onFinish({
+    const isShared = Boolean(
+      quiz.isShared ||
+      (quiz.userId && user?.id && quiz.userId !== user.id)
+    );
+
+    const resultPayload = {
       answers,
       correct,
       total,
@@ -232,7 +238,14 @@ export default function QuizPlayer({ quiz, initialMode = null, onFinish, onBack 
       mode: solutionMode,
       livesLeft: lives,
       newlyUnlocked,
-    });
+      isShared,
+      submittedAt: new Date().toISOString(),
+    };
+
+    // Automatically save to results history
+    saveQuizResult(resultPayload, user?.id);
+
+    onFinish(resultPayload);
   };
 
   // ── Option styling ───────────────────────────────────────────────────────────
