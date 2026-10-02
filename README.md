@@ -118,28 +118,36 @@ quiz/
 ├── public/                      # Public static assets
 ├── src/
 │   ├── components/
-│   │   ├── auth/                # AuthModal, UserMenu
-│   │   ├── common/              # Sticky Navbar, Footer
-│   │   ├── quiz/                # QuestionPalette, Timer, AIPromptModal
+│   │   ├── auth/                # UserMenu
+│   │   ├── common/              # Navbar, NotFound (404), ErrorBoundary, BadgeIcon
+│   │   ├── hero/                # HeroSection
+│   │   ├── quiz/                # QuestionPalette, Timer
 │   │   └── ui/                  # QuizCard, StatCard
 │   ├── context/
-│   │   └── AuthContext.jsx      # Supabase Auth Provider & State
+│   │   └── AuthContext.jsx      # Authentication Provider & State Management
 │   ├── pages/
 │   │   ├── LandingPage.jsx      # Public Hero & Features (/)
-│   │   ├── Dashboard.jsx        # Post-login Personalized Home (/dashboard)
-│   │   ├── QuizList.jsx         # User Quizzes Explorer (/my-quizzes)
-│   │   ├── CreateQuiz.jsx       # AI Prompt & JSON Quiz Builder (/create-quiz)
-│   │   ├── QuizPlayer.jsx       # Dual Mode Player (Exam vs Instant) (/play)
-│   │   ├── ResultPage.jsx       # Results Breakdown & Detailed Review (/result)
-│   │   ├── ProfilePage.jsx      # User Profile & Password Security (/profile)
-│   │   ├── EmailVerifiedPage.jsx# Email Confirmation Landing (/email-verified)
-│   │   ├── ForgotPasswordPage.jsx# Send Password Reset Link (/forgot-password)
-│   │   └── ResetPasswordPage.jsx# Recovery Password Reset (/reset-password)
+│   │   ├── Dashboard.jsx        # Personalized Dashboard & Quick Launch (/dashboard)
+│   │   ├── QuizList.jsx         # My Quizzes Explorer (/my-quizzes)
+│   │   ├── CreateQuiz.jsx       # Quiz Creator & AI Generator (/create-quiz)
+│   │   ├── QuizPlayer.jsx       # Multi-mode Quiz Player (/play)
+│   │   ├── ResultPage.jsx       # Score Ring & Answer Review (/result)
+│   │   ├── ResultsHistoryPage.jsx # Results History & Performance Tracking (/results)
+│   │   ├── ProfilePage.jsx      # User Profile, Badges & Security (/profile)
+│   │   └── LoginPage.jsx        # Username & Password Authentication (/login)
 │   ├── services/
-│   │   ├── supabase.js          # Supabase Client & Environment-aware getSiteUrl
-│   │   └── quizService.js       # User-scoped Database CRUD Operations
+│   │   ├── supabase.js          # Supabase Client
+│   │   ├── authService.js       # User Authentication & Database Sync
+│   │   ├── quizService.js       # Cloud Quiz Storage & Code Regeneration
+│   │   ├── resultsService.js    # Quiz Results History Persistence
+│   │   ├── aiQuizGenerator.js   # AI Quiz Generation & Worksheets
+│   │   └── gamificationService.js # Badges & XP Scoring
 │   ├── utils/
-│   │   └── storage.js           # JSON Quiz Schema Validator
+│   │   ├── storage.js           # Local Storage & Schema Validation
+│   │   ├── confetti.js          # Victory Effects
+│   │   ├── soundEffects.js      # Interactive Audio Feedback
+│   │   ├── useCountUp.js        # KPI Counter Hook
+│   │   └── useScrollReveal.js   # Viewport Scroll Animations
 │   ├── App.jsx                  # Application Router & Navigation System
 │   ├── index.css                # Custom Design System & Glassmorphism Styles
 │   └── main.jsx                 # React Entry Point

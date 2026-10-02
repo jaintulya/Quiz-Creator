@@ -9,7 +9,7 @@ import {
   deleteQuiz as deleteLocalQuiz,
   generateQuizCode,
   getStorageKey,
-} from './storage.js';
+} from '../utils/storage.js';
 
 // ─── Fetch Single Quiz by ID or Unique Code (Cloud First) ───────────────────
 export async function fetchQuizById(id, userId = null) {

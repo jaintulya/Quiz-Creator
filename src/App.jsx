@@ -9,9 +9,22 @@ import Dashboard from './pages/Dashboard.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import ResultsHistoryPage from './pages/ResultsHistoryPage.jsx';
+import NotFound from './components/common/NotFound.jsx';
 import ErrorBoundary from './components/common/ErrorBoundary.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { fetchQuizById } from './services/quizService.js';
+
+const VALID_PATHS = [
+  '/',
+  '/dashboard',
+  '/my-quizzes',
+  '/create-quiz',
+  '/profile',
+  '/results',
+  '/play',
+  '/result',
+  '/login',
+];
 
 function AppContent() {
   const { user, loading, isGuest, lastAuthEvent } = useAuth();
@@ -154,7 +167,8 @@ function AppContent() {
     if (currentPath === '/profile') return 'profile';
     if (currentPath === '/results') return 'results';
     if (currentPath === '/login') return 'login';
-    return 'home';
+    if (currentPath === '/') return 'home';
+    return '';
   };
 
   // Loading spinner
@@ -298,6 +312,11 @@ function AppContent() {
                 </button>
               </div>
             </div>
+          )}
+
+          {/* ── 404 NOT FOUND: for any invalid or removed route (e.g. /mail-verified) ── */}
+          {!VALID_PATHS.includes(currentPath) && (
+            <NotFound currentPath={currentPath} onNavigate={navigate} />
           )}
         </main>
 
