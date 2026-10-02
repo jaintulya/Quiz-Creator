@@ -148,16 +148,16 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 animate-fade-in">
 
       {/* ── Header ── */}
-      <div ref={headerRef} className={`reveal ${headerVisible ? 'visible' : ''} flex flex-col sm:flex-row sm:items-end justify-between gap-4`}>
-        <div className="space-y-2">
-          <p className="text-sm text-[--text-3] font-medium tracking-wide uppercase">{greeting},</p>
+      <div ref={headerRef} className={`reveal ${headerVisible ? 'visible' : ''} flex flex-col gap-2 pb-1`}>
+        <div className="space-y-1.5">
+          <p className="text-xs sm:text-sm text-[--text-3] font-medium tracking-wide uppercase">{greeting},</p>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             {name}
           </h1>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 pt-0.5">
             {isGuest && (
               <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[--text-3]">
-                Guest Mode • Local Only
+                Guest Session • This Device
               </span>
             )}
             {course && (
@@ -173,18 +173,6 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
               </span>
             )}
           </div>
-        </div>
-
-        {/* Quick actions */}
-        <div className="flex items-center gap-2">
-          <button onClick={() => onNavigate('list')} className="btn-secondary py-2 px-3 text-xs gap-1.5">
-            <BookOpen className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">My Quizzes</span>
-          </button>
-          <button onClick={() => onNavigate('create')} className="btn-primary py-2 px-4 text-xs gap-1.5 shadow-caramel-glow">
-            <Plus className="w-3.5 h-3.5" />
-            <span>Create Quiz</span>
-          </button>
         </div>
       </div>
 
