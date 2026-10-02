@@ -24,6 +24,7 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showPreview, setShowPreview] = useState(Boolean(editQuiz));
 
   // Authentication check
   if (!user && !isGuest) {
@@ -60,21 +61,28 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
     );
   }
 
-  // ── JSON Sync ─────────────────────────────────────────────────────────────
-  const handleJsonBlur = () => {
-    if (!jsonText.trim()) return;
+  // ── Preview Questions on Demand ──────────────────────────────────────────
+  const handlePreviewQuestions = () => {
+    setError('');
+    if (!jsonText.trim()) {
+      setError('Please paste or write your questions JSON first before previewing.');
+      setShowPreview(false);
+      return;
+    }
     const res = validateQuizJSON(jsonText, title);
     if (res.valid) {
       setQuestions(res.data);
       if (res.extractedTitle && !title.trim()) {
         setTitle(res.extractedTitle);
       }
+      setShowPreview(true);
       setError('');
       setTimeout(() => {
         document.getElementById('questions-preview-section')?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     } else {
       setError(res.error);
+      setShowPreview(false);
     }
   };
 
@@ -149,21 +157,6 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
             Build custom exams and assessments with questions, options, and answer keys.
           </p>
         </div>
-
-        {questions.length > 0 && (
-          <button
-            onClick={handleSaveQuiz}
-            disabled={saving}
-            className="btn-primary py-2.5 px-5 text-xs font-bold flex items-center gap-2 shadow-caramel-glow self-start sm:self-auto"
-          >
-            {saving ? (
-              <span className="w-3.5 h-3.5 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
-            ) : (
-              <Sparkles className="w-4 h-4" />
-            )}
-            <span>{editQuiz ? 'Update Quiz' : 'Save Quiz to Library'} ({questions.length} Qs)</span>
-          </button>
-        )}
       </div>
 
       {/* Alerts */}
@@ -211,41 +204,13 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
 
       {/* Questions Payload Editor */}
       <div className="glass-card p-5 sm:p-7 border-white/10 space-y-4 animate-fade-in">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <label className="text-xs font-bold text-white uppercase tracking-wider block">
-              Questions Payload (JSON)
-            </label>
-            <p className="text-[11px] text-[#8d877c] mt-0.5">
-              Paste your questions array. Supports both string text answers (e.g. <code>"correctAnswer": "Pressable"</code>) and 0-based index numbers.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              const sample = [
-                {
-                  question: "Which component is recommended in React Native for handling tap interactions?",
-                  options: ["TouchableHighlight", "View", "Pressable", "TouchableOpacity"],
-                  correctAnswer: "Pressable",
-                  explanation: "Pressable is the modern, flexible component for handling touch interactions in React Native."
-                },
-                {
-                  question: "What is the primary function of a database index?",
-                  options: ["Compress disk space", "Accelerate query lookup speed", "Encrypt column values", "Backup table rows"],
-                  correctAnswer: 1,
-                  explanation: "Indexes create balanced lookup trees that reduce disk I/O."
-                }
-              ];
-              setJsonText(JSON.stringify(sample, null, 2));
-              setQuestions(sample);
-              if (!title.trim()) setTitle('React Native & Database Fundamentals');
-              setError('');
-            }}
-            className="text-[11px] font-semibold text-[#f5ba72] hover:underline shrink-0"
-          >
-            Insert Sample Questions
-          </button>
+        <div>
+          <label className="text-xs font-bold text-white uppercase tracking-wider block">
+            Questions Payload (JSON)
+          </label>
+          <p className="text-[11px] text-[#8d877c] mt-0.5">
+            Paste your questions JSON array. Supports string answers (e.g. <code>"correctAnswer": "Pressable"</code>) and 0-based option index numbers.
+          </p>
         </div>
 
         <textarea
@@ -255,7 +220,6 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
             setJsonText(e.target.value);
             if (error) setError('');
           }}
-          onBlur={handleJsonBlur}
           placeholder={`[\n  {\n    "question": "Which component is recommended in React Native for handling tap interactions?",\n    "options": ["TouchableHighlight", "View", "Pressable", "TouchableOpacity"],\n    "correctAnswer": "Pressable",\n    "explanation": "Pressable provides extensive touch feedback."\n  }\n]`}
           className="input-field text-xs font-mono p-4 w-full resize-y"
         />
@@ -263,21 +227,38 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
           <span className="text-[11px] text-[#8d877c] flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span>Questions typed or pasted here automatically sync with the preview below.</span>
+            <span>Click "Preview Questions" to validate and view questions below before creating.</span>
           </span>
-          <button
-            type="button"
-            onClick={handleJsonBlur}
-            className="btn-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 shadow-caramel-glow"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span>Preview Questions</span>
-          </button>
+
+          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+            <button
+              type="button"
+              onClick={handlePreviewQuestions}
+              className="btn-secondary py-2.5 px-4 text-xs font-bold flex items-center justify-center gap-1.5"
+            >
+              <Eye className="w-3.5 h-3.5 text-[#f5ba72]" />
+              <span>Preview Questions</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSaveQuiz}
+              disabled={saving}
+              className="btn-primary py-2.5 px-5 text-xs font-bold flex items-center justify-center gap-2 shadow-caramel-glow"
+            >
+              {saving ? (
+                <span className="w-3.5 h-3.5 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+              )}
+              <span>{editQuiz ? 'Update Quiz' : 'Create Quiz'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Live Quiz Metadata & Preview (shown once questions exist) */}
-      {questions.length > 0 && (
+      {/* Live Quiz Metadata & Preview (shown ONLY when user clicks Preview Questions) */}
+      {showPreview && questions.length > 0 && (
         <div id="questions-preview-section" className="glass-card p-5 sm:p-7 border-white/10 space-y-6 animate-fade-in scroll-mt-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/[0.08]">
             <div>
@@ -291,6 +272,7 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
             </div>
 
             <button
+              type="button"
               onClick={handleSaveQuiz}
               disabled={saving}
               className="btn-primary py-2.5 px-5 text-xs font-bold flex items-center gap-2 shadow-caramel-glow self-start sm:self-auto"
@@ -300,7 +282,7 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
               ) : (
                 <Sparkles className="w-4 h-4" />
               )}
-              <span>Save Quiz to Library</span>
+              <span>Save to Library</span>
             </button>
           </div>
 
@@ -369,6 +351,26 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
                 )}
               </div>
             ))}
+          </div>
+
+          {/* Bottom Save to Library CTA */}
+          <div className="pt-4 border-t border-white/[0.08] flex items-center justify-between">
+            <p className="text-xs text-[#8d877c]">
+              All questions validated. Ready to save to your library.
+            </p>
+            <button
+              type="button"
+              onClick={handleSaveQuiz}
+              disabled={saving}
+              className="btn-primary py-2.5 px-6 text-xs font-bold flex items-center gap-2 shadow-caramel-glow"
+            >
+              {saving ? (
+                <span className="w-3.5 h-3.5 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              <span>Save to Library</span>
+            </button>
           </div>
         </div>
       )}
