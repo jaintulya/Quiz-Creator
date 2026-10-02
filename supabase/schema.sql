@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.app_users (
     username TEXT UNIQUE NOT NULL,
     normalized_username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    full_name TEXT DEFAULT '',
     course TEXT DEFAULT '',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
