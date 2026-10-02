@@ -1,24 +1,31 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
-  Wand2, Plus, CheckCircle2, AlertCircle, FileJson,
-  Sparkles, ArrowLeft, Lock, LogIn
+  Plus, CheckCircle2, AlertCircle, FileJson,
+  Sparkles, ArrowLeft, Lock, LogIn, Check, Eye
 } from 'lucide-react';
-import AIPromptModal from '../components/quiz/AIPromptModal.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { saveNewQuiz, updateExistingQuiz, updateTitleOnly } from '../services/quizService.js';
+import { saveNewQuiz, updateExistingQuiz } from '../services/quizService.js';
 import { validateQuizJSON } from '../utils/storage.js';
+import { recordQuizCreated } from '../services/gamificationService.js';
 
 export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) {
   const { user, isGuest } = useAuth();
-  const [title, setTitle]         = useState(editQuiz ? editQuiz.title : '');
-  const [description, setDescription] = useState(editQuiz?.description || '');
-  const [jsonText, setJsonText]   = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [error, setError]         = useState('');
-  const [success, setSuccess]     = useState('');
-  const [loading, setLoading]     = useState(false);
 
-  // Authentication gate: quiz creation requires login or guest mode
+  // Common Quiz Fields
+  const [title, setTitle] = useState(editQuiz ? editQuiz.title : '');
+  const [description, setDescription] = useState(editQuiz?.description || '');
+  const [category, setCategory] = useState(editQuiz?.category || 'General');
+  const [questions, setQuestions] = useState(editQuiz?.questions || []);
+
+  // Questions JSON Editor State
+  const [jsonText, setJsonText] = useState(editQuiz ? JSON.stringify(editQuiz.questions, null, 2) : '');
+
+  // Status
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Authentication check
   if (!user && !isGuest) {
     return (
       <div className="max-w-md mx-auto px-4 py-20 text-center animate-fade-in">
@@ -53,223 +60,319 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
     );
   }
 
-  // Live validator for the JSON text
-  const jsonValidation = useMemo(() => {
-    if (!jsonText.trim()) return null;
-    return validateQuizJSON(jsonText);
-  }, [jsonText]);
+  // ── JSON Sync ─────────────────────────────────────────────────────────────
+  const handleJsonBlur = () => {
+    if (!jsonText.trim()) return;
+    const res = validateQuizJSON(jsonText, title);
+    if (res.valid) {
+      setQuestions(res.data);
+      if (res.extractedTitle && !title.trim()) {
+        setTitle(res.extractedTitle);
+      }
+      setError('');
+      setTimeout(() => {
+        document.getElementById('questions-preview-section')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else {
+      setError(res.error);
+    }
+  };
 
+  // ── Save Quiz ─────────────────────────────────────────────────────────────
+  const handleSaveQuiz = async () => {
+    setError('');
+    setSuccess('');
 
-  const handleCreate = async () => {
-    if (!title.trim()) {
-      setError('Please enter a quiz title.');
+    let finalQuestions = questions;
+    if (jsonText.trim()) {
+      const res = validateQuizJSON(jsonText, title);
+      if (!res.valid) {
+        setError(res.error);
+        return;
+      }
+      finalQuestions = res.data;
+      setQuestions(res.data);
+      if (res.extractedTitle && !title.trim()) {
+        setTitle(res.extractedTitle);
+      }
+    }
+
+    const finalTitle = title.trim();
+    if (!finalTitle) {
+      setError('Please provide a title for your quiz.');
       return;
     }
 
-    setLoading(true);
+    if (!finalQuestions || finalQuestions.length === 0) {
+      setError('Your quiz must contain at least one question before saving.');
+      return;
+    }
+
+    setSaving(true);
     try {
       if (editQuiz) {
-        if (!jsonText.trim()) {
-          await updateTitleOnly(editQuiz.id, title, user?.id);
-          setSuccess('Quiz updated successfully!');
-        } else {
-          const result = validateQuizJSON(jsonText);
-          if (!result.valid) {
-            setError(result.error);
-            setLoading(false);
-            return;
-          }
-          await updateExistingQuiz(editQuiz.id, title, result.data, user?.id);
-          setSuccess(`Quiz updated with ${result.data.length} questions!`);
-        }
+        await updateExistingQuiz(editQuiz.id, finalTitle, finalQuestions, user?.id);
+        setSuccess('Quiz updated successfully!');
       } else {
-        if (!jsonText.trim()) {
-          setError('Please paste your questions in JSON format.');
-          setLoading(false);
-          return;
-        }
-        const result = validateQuizJSON(jsonText);
-        if (!result.valid) {
-          setError(result.error);
-          setLoading(false);
-          return;
-        }
-
-        await saveNewQuiz(title, result.data, user?.id, 'General', description);
-        setSuccess(`Quiz created with ${result.data.length} questions! Saved to database.`);
+        await saveNewQuiz(finalTitle, finalQuestions, user?.id, category, description);
+        recordQuizCreated(user?.id);
+        setSuccess(`Quiz "${finalTitle}" created with ${finalQuestions.length} questions! Saved to your library.`);
       }
 
-      setError('');
-      setTimeout(() => onNavigate('list'), 1200);
+      setTimeout(() => {
+        onNavigate('list');
+      }, 1200);
     } catch (err) {
       setError(err.message || 'Failed to save quiz.');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6 animate-fade-in">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-fade-in space-y-6">
 
       {/* Header */}
-      <div>
-        <button
-          onClick={() => onNavigate('list')}
-          className="btn-ghost mb-2 -ml-2 text-xs"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Quizzes
-        </button>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-          {editQuiz ? 'Edit Quiz' : 'Create New'}{' '}
-          <span className="gradient-text-coral">Interactive Quiz</span>
-        </h1>
-        <p className="text-xs sm:text-sm text-[#a39e94] mt-1">
-          Build custom quizzes using AI prompts or paste JSON directly.
-        </p>
-      </div>
-
-      {/* Form Card */}
-      <div className="glass-card p-5 sm:p-8 space-y-6">
-
-        {/* Step 1: Title & Description */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-caramel-500 text-slate-950 flex items-center justify-center font-bold text-[11px]">1</span>
-              Quiz Details
-            </label>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-[#a39e94] block mb-1">Quiz Title *</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => { setTitle(e.target.value); setError(''); }}
-                placeholder="e.g. JavaScript Basics, Web Development, General Knowledge..."
-                className="input-field text-sm sm:text-base py-3 px-4"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-[#a39e94] block mb-1">Short Description (optional)</label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="e.g. Fundamental concepts of JavaScript"
-                className="input-field text-xs sm:text-sm py-2 px-3"
-              />
-            </div>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <button
+            onClick={() => onNavigate('list')}
+            className="btn-ghost text-xs -ml-2 mb-2 flex items-center gap-1.5"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Quizzes</span>
+          </button>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            {editQuiz ? 'Edit Quiz' : 'Create New'} <span className="gradient-text">Quiz</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-[#8d877c] mt-1">
+            Build custom exams and assessments with questions, options, and answer keys.
+          </p>
         </div>
 
-        {/* Step 2: AI Prompt Helper */}
-        <div className="space-y-3 pt-2 border-t border-white/5">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-caramel-500 text-slate-950 flex items-center justify-center font-bold text-[11px]">2</span>
-              Generate Questions with AI
-            </label>
-            <span className="text-[11px] text-caramel-400 font-semibold">ChatGPT / Gemini</span>
-          </div>
+        {questions.length > 0 && (
+          <button
+            onClick={handleSaveQuiz}
+            disabled={saving}
+            className="btn-primary py-2.5 px-5 text-xs font-bold flex items-center gap-2 shadow-caramel-glow self-start sm:self-auto"
+          >
+            {saving ? (
+              <span className="w-3.5 h-3.5 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            <span>{editQuiz ? 'Update Quiz' : 'Save Quiz to Library'} ({questions.length} Qs)</span>
+          </button>
+        )}
+      </div>
 
-          <div className="p-4 sm:p-5 rounded-2xl bg-[#241e16] border border-caramel-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-caramel-500/20 border border-caramel-500/30 flex items-center justify-center shrink-0 mt-0.5">
-                <Wand2 className="w-4 h-4 text-caramel-400" />
-              </div>
-              <div className="text-xs sm:text-sm text-[#dedbd3] leading-relaxed">
-                Need question format prompt? Copy our ready-to-use prompt and paste into ChatGPT or Gemini with your study notes.
-              </div>
+      {/* Alerts */}
+      {error && (
+        <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5 animate-fade-in">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+      {success && (
+        <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2.5 animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{success}</span>
+        </div>
+      )}
+
+      {/* Quiz Details Card (Always Visible at Top) */}
+      <div className="glass-card p-4 sm:p-5 border-white/10 space-y-3">
+        <div>
+          <label className="text-xs font-semibold text-[#a39e94] block mb-1">
+            Quiz Title <span className="text-[#f5ba72]">*</span>
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. React Native Components, Operating Systems, Modern Physics..."
+            className="input-field text-xs sm:text-sm py-2.5 px-3.5 w-full font-semibold"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-[#8d877c] block mb-1">
+            Short Description (Optional)
+          </label>
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="e.g. Comprehensive practice quiz with explanations"
+            className="input-field text-xs py-2 px-3 w-full"
+          />
+        </div>
+      </div>
+
+      {/* Questions Payload Editor */}
+      <div className="glass-card p-5 sm:p-7 border-white/10 space-y-4 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <label className="text-xs font-bold text-white uppercase tracking-wider block">
+              Questions Payload (JSON)
+            </label>
+            <p className="text-[11px] text-[#8d877c] mt-0.5">
+              Paste your questions array. Supports both string text answers (e.g. <code>"correctAnswer": "Pressable"</code>) and 0-based index numbers.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const sample = [
+                {
+                  question: "Which component is recommended in React Native for handling tap interactions?",
+                  options: ["TouchableHighlight", "View", "Pressable", "TouchableOpacity"],
+                  correctAnswer: "Pressable",
+                  explanation: "Pressable is the modern, flexible component for handling touch interactions in React Native."
+                },
+                {
+                  question: "What is the primary function of a database index?",
+                  options: ["Compress disk space", "Accelerate query lookup speed", "Encrypt column values", "Backup table rows"],
+                  correctAnswer: 1,
+                  explanation: "Indexes create balanced lookup trees that reduce disk I/O."
+                }
+              ];
+              setJsonText(JSON.stringify(sample, null, 2));
+              setQuestions(sample);
+              if (!title.trim()) setTitle('React Native & Database Fundamentals');
+              setError('');
+            }}
+            className="text-[11px] font-semibold text-[#f5ba72] hover:underline shrink-0"
+          >
+            Insert Sample Questions
+          </button>
+        </div>
+
+        <textarea
+          rows={10}
+          value={jsonText}
+          onChange={(e) => {
+            setJsonText(e.target.value);
+            if (error) setError('');
+          }}
+          onBlur={handleJsonBlur}
+          placeholder={`[\n  {\n    "question": "Which component is recommended in React Native for handling tap interactions?",\n    "options": ["TouchableHighlight", "View", "Pressable", "TouchableOpacity"],\n    "correctAnswer": "Pressable",\n    "explanation": "Pressable provides extensive touch feedback."\n  }\n]`}
+          className="input-field text-xs font-mono p-4 w-full resize-y"
+        />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          <span className="text-[11px] text-[#8d877c] flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span>Questions typed or pasted here automatically sync with the preview below.</span>
+          </span>
+          <button
+            type="button"
+            onClick={handleJsonBlur}
+            className="btn-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 shadow-caramel-glow"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Preview Questions</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Live Quiz Metadata & Preview (shown once questions exist) */}
+      {questions.length > 0 && (
+        <div id="questions-preview-section" className="glass-card p-5 sm:p-7 border-white/10 space-y-6 animate-fade-in scroll-mt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/[0.08]">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                <span>Generated Quiz Preview ({questions.length} Questions)</span>
+              </h2>
+              <p className="text-xs text-[#8d877c] mt-0.5">
+                Review questions and answers before saving to your library.
+              </p>
             </div>
 
             <button
-              onClick={() => { setError(''); setShowModal(true); }}
-              className="btn-primary shrink-0 py-2.5 px-4 text-xs font-bold"
+              onClick={handleSaveQuiz}
+              disabled={saving}
+              className="btn-primary py-2.5 px-5 text-xs font-bold flex items-center gap-2 shadow-caramel-glow self-start sm:self-auto"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Get AI Prompt</span>
+              {saving ? (
+                <span className="w-3.5 h-3.5 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              <span>Save Quiz to Library</span>
             </button>
           </div>
-        </div>
 
-        {/* Step 3: Paste JSON */}
-        <div className="space-y-3 pt-2 border-t border-white/5">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-caramel-500 text-slate-950 flex items-center justify-center font-bold text-[11px]">3</span>
-              Questions JSON Data
-            </label>
-          </div>
-
-          <textarea
-            value={jsonText}
-            onChange={(e) => { setJsonText(e.target.value); setError(''); setSuccess(''); }}
-            placeholder={`Paste the JSON array output from your AI chat here...\n\nExample:\n[\n  {\n    "question": "Which keyword declares a constant in JS?",\n    "options": ["var", "let", "const", "def"],\n    "correctAnswer": "const",\n    "explanation": "const declares block-scoped constants."\n  }\n]`}
-            rows={10}
-            className="textarea-field w-full p-4 font-mono text-xs sm:text-sm"
-          />
-
-          {/* Validation Feedback */}
-          {jsonValidation && (
-            <div className="animate-fade-in">
-              {jsonValidation.valid ? (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>Valid JSON detected: Ready to import <strong>{jsonValidation.data.length}</strong> questions!</span>
-                </div>
-              ) : (
-                <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{jsonValidation.error}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Feedback Messages */}
-        {error && (
-          <div className="p-4 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 animate-fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-        {success && (
-          <div className="p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2 animate-fade-in">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>{success}</span>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="pt-3 flex flex-col sm:flex-row items-center gap-3">
-          <button
-            onClick={handleCreate}
-            disabled={loading}
-            className="btn-primary w-full sm:flex-1 py-3 text-sm font-bold shadow-caramel-glow"
-          >
-            {loading ? (
-              <span className="w-4 h-4 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
-            ) : (
-              <Plus className="w-4 h-4 stroke-[3]" />
+          {/* Metadata preview strip */}
+          <div className="flex flex-wrap items-center gap-2.5 py-2.5 px-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-xs">
+            <span className="text-[#8d877c]">Title:</span>
+            <span className="font-bold text-white">{title || 'Untitled Quiz'}</span>
+            <span className="text-white/20">•</span>
+            <span className="text-[#8d877c]">Questions:</span>
+            <span className="font-semibold text-emerald-400">{questions.length} Questions</span>
+            {description && (
+              <>
+                <span className="text-white/20">•</span>
+                <span className="text-[#8d877c] truncate max-w-xs">{description}</span>
+              </>
             )}
-            <span>{loading ? 'Saving to Database...' : editQuiz ? 'Save Changes' : 'Create Quiz Now'}</span>
-          </button>
+          </div>
 
-          <button
-            onClick={() => onNavigate('list')}
-            className="btn-secondary w-full sm:w-auto px-6 py-3 text-sm"
-          >
-            Cancel
-          </button>
+          {/* Questions Review List */}
+          <div className="space-y-3 pt-2">
+            <span className="text-xs font-bold text-white uppercase tracking-wider block">
+              Questions & Answer Key
+            </span>
+
+            {questions.map((q, idx) => (
+              <div
+                key={idx}
+                className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-xs sm:text-sm font-semibold text-white">
+                    <span className="text-[#f5ba72] font-mono mr-1.5">{idx + 1}.</span>
+                    {q.question}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {q.options.map((opt, optIdx) => {
+                    const isCorrect = optIdx === q.correctAnswer || opt === q.correctAnswer;
+                    return (
+                      <div
+                        key={optIdx}
+                        className={`p-2.5 rounded-lg border flex items-center gap-2 ${
+                          isCorrect
+                            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 font-semibold'
+                            : 'bg-white/[0.02] border-white/[0.05] text-[#dedbd3]'
+                        }`}
+                      >
+                        <span className={`w-5 h-5 rounded flex items-center justify-center font-bold text-[10px] ${
+                          isCorrect ? 'bg-emerald-500 text-slate-950' : 'bg-white/10 text-slate-400'
+                        }`}>
+                          {String.fromCharCode(65 + optIdx)}
+                        </span>
+                        <span className="truncate">{opt}</span>
+                        {isCorrect && <Check className="w-3.5 h-3.5 text-emerald-400 ml-auto shrink-0" />}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {q.explanation && (
+                  <p className="text-[11px] text-[#8d877c] border-t border-white/[0.04] pt-2 flex items-start gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                    <span><strong className="font-semibold text-[#a39e94]">Explanation:</strong> {q.explanation}</span>
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
+      )}
 
-      </div>
-
-      {/* AI Prompt Modal */}
-      {showModal && <AIPromptModal onClose={() => setShowModal(false)} />}
     </div>
   );
 }
