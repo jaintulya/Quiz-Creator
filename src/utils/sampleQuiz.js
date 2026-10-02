@@ -2,7 +2,7 @@ import { getAllQuizzes, saveQuiz } from './storage.js';
 
 // ─── Sample quiz data ──────────────────────────────────────────────────────────
 const SAMPLE_QUIZ = {
-  title: '🚀 JavaScript Fundamentals',
+  title: 'JavaScript Fundamentals',
   questions: [
     {
       question: 'Which keyword is used to declare a constant variable in JavaScript?',
