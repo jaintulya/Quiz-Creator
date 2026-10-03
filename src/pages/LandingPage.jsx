@@ -168,7 +168,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
       </div>
 
       {/* ── 2. HERO SECTION (3D Model only here in the starting section) ── */}
-      <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-16 lg:py-24 z-10 overflow-hidden">
+      <section className="relative min-h-[92vh] flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 pt-24 pb-16 sm:pt-28 sm:pb-20 lg:pt-32 lg:pb-24 z-10 overflow-hidden">
 
         {/* 3D WebGL Model — strictly mounted inside Hero so it scrolls away naturally */}
         <Landing3DScene className="absolute inset-0 pointer-events-none opacity-75 z-0" />
@@ -334,7 +334,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
       </div>
 
       {/* ── 4. THREE WAYS TO STUDY (Interactive Modes with Live Previews) ── */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-12 relative z-10">
+      <section id="study-modes" className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-12 relative z-10 scroll-mt-24">
         <div className="text-center space-y-3.5 max-w-2xl mx-auto">
           {/* Centered pill */}
           <div className="flex items-center justify-center">
@@ -357,7 +357,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
       </section>
 
       {/* ── 5. PLATFORM HIGHLIGHTS (Features Grid) ── */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10">
+      <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10 scroll-mt-24">
         <div className="text-center mb-14 space-y-3.5 max-w-xl mx-auto">
           <div className="flex items-center justify-center">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-[#f5ba72] text-[11px] font-bold uppercase tracking-wider">
@@ -405,7 +405,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
       </section>
 
       {/* ── 6. HOW IT WORKS (Connected Scroll-Driven Timeline) ── */}
-      <section className="steps-container py-24 px-4 sm:px-6 lg:px-8 bg-[#0c0b0a]/90 backdrop-blur-md border-y border-white/[0.06] relative z-10">
+      <section id="how-it-works" className="steps-container py-24 px-4 sm:px-6 lg:px-8 bg-[#0c0b0a]/90 backdrop-blur-md border-y border-white/[0.06] relative z-10 scroll-mt-24">
         <div className="max-w-5xl mx-auto space-y-14">
           <div className="text-center space-y-3.5 max-w-md mx-auto">
             <div className="flex items-center justify-center">
