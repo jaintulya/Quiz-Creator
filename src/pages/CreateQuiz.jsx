@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { saveNewQuiz, updateExistingQuiz } from '../services/quizService.js';
 import { validateQuizJSON } from '../utils/storage.js';
 import { recordQuizCreated } from '../services/gamificationService.js';
+import AIPromptModal from '../components/quiz/AIPromptModal.jsx';
 
 export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) {
   const { user, isGuest } = useAuth();
@@ -25,6 +26,7 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(Boolean(editQuiz));
+  const [showPromptModal, setShowPromptModal] = useState(false);
 
   // Sync state whenever editQuiz prop changes (prevents leftover data when creating new quiz)
   useEffect(() => {
@@ -242,13 +244,24 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
 
       {/* Questions Payload Editor */}
       <div className="glass-card p-5 sm:p-7 border-white/10 space-y-4 animate-fade-in">
-        <div>
-          <label className="text-xs font-bold text-white uppercase tracking-wider block">
-            Quiz Questions & Answers
-          </label>
-          <p className="text-[11px] text-[#8d877c] mt-0.5">
-            Enter or paste your multiple-choice questions below with their options and correct answers.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <label className="text-xs font-bold text-white uppercase tracking-wider block">
+              Quiz Questions & Answers
+            </label>
+            <p className="text-[11px] text-[#8d877c] mt-0.5">
+              Enter or paste your multiple-choice questions below with their options and correct answers.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowPromptModal(true)}
+            className="btn-secondary py-2 px-3.5 text-xs font-semibold flex items-center gap-2 border-[#f5ba72]/30 text-[#f5ba72] hover:bg-[#f5ba72]/10 transition-all shrink-0 self-start sm:self-auto shadow-sm"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#f5ba72]" />
+            <span>Get AI Prompt</span>
+          </button>
         </div>
 
         <textarea
@@ -263,9 +276,9 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
         />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-          <span className="text-[11px] text-[#8d877c] flex items-center gap-1.5">
+          <span className="text-[11px] text-[#8d877c] flex items-center gap-1.5 flex-wrap">
             <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span>Click "Preview Questions" to validate and view questions below before creating.</span>
+            <span>Need questions? Click <button type="button" onClick={() => setShowPromptModal(true)} className="text-[#f5ba72] underline font-semibold hover:text-[#f7cb93]">"Get AI Prompt"</button> to generate with ChatGPT/Gemini.</span>
           </span>
 
           <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
@@ -411,6 +424,14 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
             </button>
           </div>
         </div>
+      )}
+
+      {/* AI Prompt Generator Modal */}
+      {showPromptModal && (
+        <AIPromptModal
+          defaultTopic={title}
+          onClose={() => setShowPromptModal(false)}
+        />
       )}
 
     </div>
