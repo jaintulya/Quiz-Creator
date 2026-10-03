@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { fetchAllQuizzes } from '../services/quizService.js';
-import { getGamificationData, BADGES_CATALOG } from '../services/gamificationService.js';
+import { getGamificationData, BADGES_CATALOG, getBadgeLevel, getBadgeDetails } from '../services/gamificationService.js';
 import BadgeIcon from '../components/common/BadgeIcon.jsx';
 
 const COURSE_OPTIONS = [
@@ -71,6 +71,8 @@ export default function ProfilePage({ onNavigate }) {
   }, [user]);
 
   const totalQuestions = quizzes.reduce((acc, q) => acc + (q.questions?.length || 0), 0);
+  const gamificationData = getGamificationData(user?.id);
+  const unlockedBadgesCount = BADGES_CATALOG.filter((b) => getBadgeLevel(gamificationData?.unlockedBadges, b.id) > 0).length;
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -127,7 +129,7 @@ export default function ProfilePage({ onNavigate }) {
     : '';
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-6 animate-fade-in">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 animate-fade-in">
 
       {/* ── Back ── */}
       <button
@@ -468,54 +470,138 @@ export default function ProfilePage({ onNavigate }) {
         </div>
       </div>
 
-      {/* ── Badges & Achievements Showcase ── */}
-      <div className="glass-card p-5 sm:p-6 border-white/10 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Award className="w-4 h-4 text-[#f5ba72]" />
-            <h2 className="text-sm font-bold text-white">Achievements & Badges</h2>
+      {/* ── Badges & Achievements Showcase (3-Tier Progressive System) ── */}
+      <div className="glass-card p-5 sm:p-7 border-white/10 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-2.5">
+            <Award className="w-5 h-5 text-[#f5ba72]" />
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-white">Achievements & Masteries</h2>
+              <p className="text-xs text-[#8d877c]">
+                3 progressive tiers per achievement. Quality standard: ≥ 80% accuracy required.
+              </p>
+            </div>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[#f5ba72]">
-            {Object.keys(getGamificationData(user?.id)?.unlockedBadges || {}).length} / {BADGES_CATALOG.length} Unlocked
+          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[#f5ba72] self-start sm:self-auto">
+            {unlockedBadgesCount} / {BADGES_CATALOG.length} Badges Unlocked
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {BADGES_CATALOG.map((badge) => {
-            const isUnlocked = Boolean(getGamificationData(user?.id)?.unlockedBadges?.[badge.id]);
+            const level = getBadgeLevel(gamificationData?.unlockedBadges, badge.id);
+            const isUnlocked = level > 0;
+            const isMax = level >= (badge.maxLevel || 3);
+            const details = getBadgeDetails(badge, level);
+
             return (
               <div
                 key={badge.id}
-                className={`p-3 rounded-xl border transition-colors flex items-start gap-3 ${
+                className={`p-4 sm:p-5 rounded-2xl border transition-all flex flex-col justify-between gap-3.5 ${
                   isUnlocked
-                    ? 'bg-[#181512] border-white/[0.08] text-white hover:border-white/20'
-                    : 'bg-white/[0.015] border-white/[0.04] opacity-55 text-[#8d877c]'
+                    ? isMax
+                      ? 'bg-gradient-to-br from-[#1c1813] to-[#141210] border-amber-500/35 shadow-[0_0_16px_rgba(245,186,114,0.08)]'
+                      : 'bg-[#181512] border-white/[0.09] text-white hover:border-white/20'
+                    : 'bg-white/[0.015] border-white/[0.04] opacity-65 text-[#8d877c]'
                 }`}
               >
-                <BadgeIcon id={badge.id} isUnlocked={isUnlocked} size="md" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-1">
-                    <h4 className={`text-xs font-bold truncate ${isUnlocked ? 'text-white' : 'text-[#a39e94]'}`}>
-                      {badge.title}
-                    </h4>
-                    <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[#8d877c]">
-                      {badge.tier}
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <BadgeIcon id={badge.id} isUnlocked={isUnlocked} level={level} size="lg" />
+                      <div>
+                        <h4 className={`text-sm font-bold ${isUnlocked ? 'text-white' : 'text-[#a39e94]'}`}>
+                          {badge.title}
+                        </h4>
+                        <p className="text-[11px] text-[#8d877c] mt-0.5">{badge.category}</p>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
+                        isMax
+                          ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
+                          : level === 2
+                          ? 'bg-sky-400/20 text-sky-300 border border-sky-400/30'
+                          : level === 1
+                          ? 'bg-amber-700/25 text-amber-400 border border-amber-700/30'
+                          : 'bg-white/5 text-[#6c665d] border border-white/5'
+                      }`}
+                    >
+                      {isMax ? 'Level 3 MAX' : isUnlocked ? `Level ${level}` : 'Locked'}
                     </span>
                   </div>
-                  <p className="text-[11px] text-[#8d877c] line-clamp-2 mt-0.5 leading-snug">
-                    {badge.description}
-                  </p>
-                  <div className="mt-1.5 flex items-center gap-1 text-[10px]">
-                    {isUnlocked ? (
-                      <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Unlocked
-                      </span>
-                    ) : (
-                      <span className="text-[#6c665d] flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> Locked
-                      </span>
-                    )}
+
+                  {/* 3-Step Level Progression Track */}
+                  <div className="mt-3.5 pt-3 border-t border-white/5 space-y-2.5">
+                    <div className="grid grid-cols-3 gap-2">
+                      {[1, 2, 3].map((lvlNum) => {
+                        const lvlDef = badge.levels.find((l) => l.level === lvlNum);
+                        const isDone = level >= lvlNum;
+                        const isNext = level === lvlNum - 1;
+                        return (
+                          <div
+                            key={lvlNum}
+                            className={`p-2 rounded-lg border text-center transition-colors ${
+                              isDone
+                                ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                                : isNext
+                                ? 'bg-white/5 border-white/10 text-white/80'
+                                : 'bg-transparent border-white/5 text-[#555047]'
+                            }`}
+                          >
+                            <p className="text-[9px] font-bold uppercase tracking-wider">
+                              Level {lvlNum} {isDone ? '✓' : ''}
+                            </p>
+                            <p className="text-[9px] truncate mt-0.5 opacity-85" title={lvlDef?.name}>
+                              {lvlDef?.name}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Requirements and current status */}
+                    <div className="text-[11px] leading-relaxed pt-1">
+                      {isUnlocked ? (
+                        <div>
+                          <p className="text-[#dedbd3]">
+                            <span className="text-emerald-400 font-semibold">Tier {level} Unlocked: </span>
+                            {details.currentLevelDef?.description}
+                          </p>
+                          {!isMax && (
+                            <p className="text-[#a39e94] mt-1.5 text-[10px]">
+                              <span className="text-[#f5ba72] font-semibold">Next Goal (Level {level + 1}): </span>
+                              {details.nextLevelDef?.reqSummary}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-[#8d877c]">
+                          <span className="text-[#a39e94] font-medium">To Unlock Level 1: </span>
+                          {badge.levels[0]?.reqSummary}
+                        </p>
+                      )}
+                    </div>
                   </div>
+                </div>
+
+                <div className="pt-2.5 flex items-center justify-between text-[10px] border-t border-white/5">
+                  {isMax ? (
+                    <span className="text-amber-400 font-bold flex items-center gap-1">
+                      ★ Mastered Achievement
+                    </span>
+                  ) : isUnlocked ? (
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Tier {level} Active
+                    </span>
+                  ) : (
+                    <span className="text-[#6c665d] flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> Locked (Requires ≥ 80% accuracy)
+                    </span>
+                  )}
+                  <span className="text-[10px] text-[#6c665d] font-mono">
+                    {isMax ? '3/3' : `${level}/3`} Tiers
+                  </span>
                 </div>
               </div>
             );

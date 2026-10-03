@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Sparkles, BookOpen, Plus, Clock, Target, Trophy, Play,
-  Pencil, TrendingUp, Layers, Flame, Brain, ArrowRight,
+  Trash2, TrendingUp, Layers, Flame, Brain, ArrowRight,
   BarChart2, Award, Lock, CheckCircle2, Zap, Share2, Check
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -11,7 +11,9 @@ import { useCountUp } from '../utils/useCountUp.js';
 import {
   getGamificationData,
   getPast30DaysActivity,
-  BADGES_CATALOG
+  BADGES_CATALOG,
+  getBadgeLevel,
+  getBadgeDetails
 } from '../services/gamificationService.js';
 import BadgeIcon from '../components/common/BadgeIcon.jsx';
 
@@ -66,6 +68,16 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [joinError, setJoinError] = useState('');
 
+  // Dismissed Recent Quizzes (removes strictly from Recent History view, never from My Quizzes)
+  const [dismissedRecentIds, setDismissedRecentIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem(`quizcraft_dismissed_recent_${user?.id || 'guest'}`);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
   useEffect(() => {
     if (!user && !isGuest) { setQuizzes([]); setLoading(false); return; }
     setLoading(true); setQuizzes([]);
@@ -77,17 +89,40 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    try {
+      const raw = localStorage.getItem(`quizcraft_dismissed_recent_${user?.id || 'guest'}`);
+      setDismissedRecentIds(raw ? JSON.parse(raw) : []);
+    } catch {
+      setDismissedRecentIds([]);
+    }
   }, [user, isGuest]);
+
+  const handleDismissRecent = (e, quizId) => {
+    e.stopPropagation();
+    const updated = [...new Set([...dismissedRecentIds, quizId])];
+    setDismissedRecentIds(updated);
+    try {
+      localStorage.setItem(`quizcraft_dismissed_recent_${user?.id || 'guest'}`, JSON.stringify(updated));
+    } catch (err) {
+      console.warn('Failed to save dismissed recent quizzes:', err);
+    }
+  };
 
   const name     = user ? getUserDisplayName() : 'Guest';
   const course   = user ? getUserCourse() : '';
   const greeting = getGreeting();
   const totalQ   = quizzes.reduce((a, q) => a + (q.questions?.length || 0), 0);
   const totalTime = Math.max(1, Math.round(totalQ * 1));
-  const recent   = [...quizzes].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 4);
+
+  // Recent Quizzes: excludes dismissed items, shows up to 5 latest items
+  const recent = quizzes
+    .filter((q) => !dismissedRecentIds.includes(q.id))
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .slice(0, 5);
 
   const streak = gamification.currentStreak || 0;
-  const unlockedBadgesCount = Object.keys(gamification.unlockedBadges || {}).length;
+  const unlockedBadgesCount = BADGES_CATALOG.filter((b) => getBadgeLevel(gamification.unlockedBadges, b.id) > 0).length;
 
   const STATS = [
     { icon: BookOpen, label: 'My Quizzes',  value: loading ? '—' : quizzes.length, color: { bg: 'bg-[#f5ba72]/10', border: 'border-[#f5ba72]/20', icon: 'text-[--amber]' } },
@@ -145,7 +180,7 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 animate-fade-in">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 animate-fade-in">
 
       {/* ── Header ── */}
       <div ref={headerRef} className={`reveal ${headerVisible ? 'visible' : ''} flex flex-col gap-2 pb-1`}>
@@ -166,75 +201,85 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
                 {course}
               </span>
             )}
-            {streak > 0 && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 border border-amber-500/30 text-amber-400">
-                <Flame className="w-3 h-3 fill-amber-500" />
-                <span>{streak} Day Streak!</span>
+            {streak > 1 && (
+              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center gap-1">
+                <Flame className="w-3 h-3 text-orange-400" />
+                {streak}-Day Streak
               </span>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Stats Grid ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+      {/* ── Guest Banner ── */}
+      {isGuest && (
+        <div className="glass-card p-4 sm:p-5 border-amber-500/20 bg-amber-500/[0.04] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 text-[--amber]" />
+            </div>
+            <div>
+              <p className="text-xs sm:text-sm font-bold text-white">Guest mode is active</p>
+              <p className="text-xs text-[--text-2]">Sign up for free to sync your quizzes and badges across devices.</p>
+            </div>
+          </div>
+          <button onClick={onOpenAuth} className="btn-primary py-2 px-4 text-xs font-bold shrink-0 self-start sm:self-auto">
+            Create Free Account
+          </button>
+        </div>
+      )}
+
+      {/* ── Top Stats Grid (4 counters) ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {STATS.map((s, i) => (
-          <AnimatedStat key={s.label} {...s} delay={i * 80} />
+          <AnimatedStat key={s.label} {...s} delay={i * 60} />
         ))}
       </div>
 
-      {/* ── 30-Day Activity Heatmap (GitHub-style Study Grid) ── */}
-      <div className="glass-card p-5 sm:p-6 border-white/10 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      {/* ── 30-Day Activity Heatmap ── */}
+      <div className="glass-card p-4 sm:p-5 border-white/10 space-y-3">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-              <Flame className="w-4 h-4 fill-amber-500" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-white">Daily Study Activity</h2>
-              <p className="text-[11px] text-[#8d877c]">30-Day consistency heatmap</p>
-            </div>
+            <BarChart2 className="w-4 h-4 text-[#f5ba72]" />
+            <h2 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">30-Day Study Activity</h2>
           </div>
-
-          <div className="flex items-center gap-1.5 text-[10px] text-[#8d877c] self-end sm:self-auto">
+          <div className="flex items-center gap-1.5 text-[10px] text-[#8d877c]">
             <span>Less</span>
-            <span className="w-2.5 h-2.5 rounded-sm bg-white/[0.04]" />
+            <span className="w-2.5 h-2.5 rounded-sm bg-white/5 border border-white/10" />
             <span className="w-2.5 h-2.5 rounded-sm bg-[#f5ba72]/30" />
-            <span className="w-2.5 h-2.5 rounded-sm bg-[#f5ba72]/70" />
-            <span className="w-2.5 h-2.5 rounded-sm bg-[#f5ba72] shadow-caramel-glow" />
+            <span className="w-2.5 h-2.5 rounded-sm bg-[#f5ba72]/65" />
+            <span className="w-2.5 h-2.5 rounded-sm bg-[#f5ba72]" />
             <span>More</span>
           </div>
         </div>
 
         {/* Heatmap Grid */}
-        <div className="pt-2 overflow-x-auto">
-          <div className="flex gap-1.5 min-w-[580px] pb-1">
-            {activityDays.map((d, i) => {
-              let bg = 'bg-white/[0.04] border-white/5';
-              if (d.level === 1) bg = 'bg-[#f5ba72]/30 border-[#f5ba72]/40';
-              if (d.level === 2) bg = 'bg-[#f5ba72]/70 border-[#f5ba72]/80';
-              if (d.level === 3) bg = 'bg-[#f5ba72] border-white/40 shadow-caramel-glow';
-
-              return (
-                <div
-                  key={d.date}
-                  className={`flex-1 h-8 rounded-md border flex items-center justify-center transition-transform hover:scale-110 cursor-pointer relative group ${bg}`}
-                >
-                  {/* Tooltip */}
-                  <div className="absolute bottom-full mb-2 hidden group-hover:block z-30 pointer-events-none">
-                    <div className="bg-[#1a1714] border border-[#f5ba72]/30 text-white text-[10px] py-1 px-2 rounded-lg shadow-xl whitespace-nowrap">
-                      <strong>{d.count}</strong> quizzes on {d.displayDate}
-                    </div>
+        <div className="grid grid-cols-10 sm:grid-cols-15 md:grid-cols-30 gap-1.5 pt-1">
+          {activityDays.map((d) => {
+            const bgClass =
+              d.level === 3 ? 'bg-[#f5ba72] shadow-[0_0_8px_rgba(245,186,114,0.4)]' :
+              d.level === 2 ? 'bg-[#f5ba72]/65' :
+              d.level === 1 ? 'bg-[#f5ba72]/30' :
+                              'bg-white/5 border border-white/5';
+            return (
+              <div
+                key={d.date}
+                className={`h-6 rounded-sm ${bgClass} transition-colors group relative cursor-pointer flex items-center justify-center`}
+              >
+                <div className="absolute bottom-full mb-1.5 hidden group-hover:flex flex-col items-center z-30 pointer-events-none">
+                  <div className="bg-[#1c1916] text-[10px] text-white px-2 py-1 rounded shadow-lg border border-white/10 whitespace-nowrap">
+                    <span className="font-semibold text-[#f5ba72]">{d.count} sessions</span> on {d.displayDate}
                   </div>
+                  <div className="w-1.5 h-1.5 bg-[#1c1916] rotate-45 -mt-1 border-r border-b border-white/10" />
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* ── Main content: Recent quizzes + Right Sidebar (Badges & Join) ── */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Recent Quizzes — takes 2 cols */}
         <div className="lg:col-span-2 space-y-4">
@@ -265,9 +310,9 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
                 <Brain className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">No quizzes created yet</h3>
+                <h3 className="text-sm font-bold text-white">No recent quizzes in history</h3>
                 <p className="text-xs text-[#8d877c] max-w-xs mx-auto mt-1">
-                  Generate your first interactive quiz with AI or create one manually.
+                  Start or create a quiz to practice your skills.
                 </p>
               </div>
               <button onClick={() => onNavigate('create')} className="btn-primary py-2 px-4 text-xs gap-1.5 shadow-caramel-glow">
@@ -298,12 +343,14 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
+                    {/* Delete from Recent History Only (Never touches My Quizzes library) */}
                     <button
-                      onClick={() => onEditQuiz && onEditQuiz(q)}
-                      className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-[#8d877c] hover:text-white transition-colors"
-                      title="Edit Quiz"
+                      onClick={(e) => handleDismissRecent(e, q.id)}
+                      className="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/15 border border-white/10 hover:border-rose-500/30 flex items-center justify-center text-[#8d877c] hover:text-rose-400 transition-colors"
+                      title="Remove from Recent History (Keeps in My Quizzes)"
+                      aria-label="Remove from recent history"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => onStartQuiz && onStartQuiz(q)}
@@ -339,9 +386,10 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
               {joinError && <p className="text-[10px] text-rose-400 font-medium">{joinError}</p>}
               <button
                 type="submit"
-                className="btn-secondary w-full py-2 text-xs font-bold flex items-center justify-center gap-1.5"
+                disabled={!joinCodeInput.trim()}
+                className="btn-primary w-full py-2 text-xs font-bold justify-center gap-1.5 shadow-caramel-glow disabled:opacity-50"
               >
-                <Play className="w-3.5 h-3.5 fill-[#f5ba72] text-[#f5ba72]" />
+                <Play className="w-3 h-3 fill-slate-950" />
                 <span>Launch Quiz</span>
               </button>
             </form>
@@ -364,7 +412,10 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
 
             <div className="grid grid-cols-2 gap-2">
               {BADGES_CATALOG.slice(0, 6).map((badge) => {
-                const isUnlocked = Boolean(gamification.unlockedBadges?.[badge.id]);
+                const level = getBadgeLevel(gamification.unlockedBadges, badge.id);
+                const isUnlocked = level > 0;
+                const isMax = level >= (badge.maxLevel || 3);
+                const details = getBadgeDetails(badge, level);
 
                 return (
                   <div
@@ -375,22 +426,48 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
                         : 'bg-white/[0.015] border-white/[0.04]'
                     }`}
                   >
-                    <BadgeIcon id={badge.id} isUnlocked={isUnlocked} size="sm" />
+                    <BadgeIcon id={badge.id} isUnlocked={isUnlocked} level={level} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <p
-                        className={`text-[11px] font-semibold leading-tight truncate ${isUnlocked ? 'text-[#f0ede6]' : 'text-[#8d877c]'}`}
-                        title={badge.title}
-                      >
-                        {badge.title}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p
+                          className={`text-[11px] font-semibold leading-tight truncate ${
+                            isUnlocked ? 'text-[#f0ede6]' : 'text-[#8d877c]'
+                          }`}
+                          title={badge.title}
+                        >
+                          {badge.title}
+                        </p>
+                        {isUnlocked && (
+                          <span
+                            className={`text-[8px] font-bold px-1 py-0.2 rounded shrink-0 ${
+                              isMax
+                                ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
+                                : level === 2
+                                ? 'bg-sky-400/20 text-sky-300 border border-sky-400/30'
+                                : 'bg-amber-700/20 text-amber-400 border border-amber-700/30'
+                            }`}
+                          >
+                            L{level}{isMax ? '★' : ''}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1 text-[9px] mt-0.5">
                         {isUnlocked ? (
-                          <span className="text-emerald-400 font-medium flex items-center gap-0.5">
-                            <Check className="w-2.5 h-2.5" /> Unlocked
-                          </span>
+                          isMax ? (
+                            <span className="text-amber-400 font-semibold flex items-center gap-0.5">
+                              ★ Mastered
+                            </span>
+                          ) : (
+                            <span
+                              className="text-[#8d877c] truncate"
+                              title={`Next Goal: Level ${level + 1} (${details.nextLevelDef?.reqSummary})`}
+                            >
+                              Next: Lvl {level + 1}
+                            </span>
+                          )
                         ) : (
                           <span className="text-[#6c665d] flex items-center gap-0.5">
-                            <Lock className="w-2.5 h-2.5" /> Locked
+                            <Lock className="w-2.5 h-2.5" /> Locked (Lvl 1)
                           </span>
                         )}
                       </div>

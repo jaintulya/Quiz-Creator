@@ -116,7 +116,7 @@ export default function ResultPage({ result, onRestart, onReviewMistakes, onStud
     const isCorrect = selected === correctText;
 
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 animate-fade-in space-y-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 animate-fade-in space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -260,17 +260,22 @@ export default function ResultPage({ result, onRestart, onReviewMistakes, onStud
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 animate-fade-in space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 animate-fade-in space-y-8">
 
       {/* Newly Unlocked Badge Banner (Celebration) */}
       {newlyUnlocked.length > 0 && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-[#f5ba72]/20 to-amber-500/20 border border-[#f5ba72]/40 flex items-center gap-3.5 animate-slide-up shadow-2xl">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/25 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
-            <Trophy className="w-5 h-5" />
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-[#f5ba72]/20 to-amber-500/20 border border-[#f5ba72]/40 flex items-center gap-3.5 sm:gap-4 animate-slide-up shadow-2xl">
+          <div className="w-11 h-11 rounded-xl bg-amber-500/25 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+            <Trophy className="w-6 h-6" />
           </div>
-          <div className="space-y-0.5">
-            <h3 className="text-sm font-extrabold text-white">
-              Achievement Unlocked: {newlyUnlocked.map(b => b.title).join(', ')}!
+          <div className="space-y-1 min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30">
+                {newlyUnlocked[0].isLevelUp ? `Leveled Up to Tier ${newlyUnlocked[0].level}!` : `Achievement Unlocked (Level ${newlyUnlocked[0].level})!`}
+              </span>
+            </div>
+            <h3 className="text-sm sm:text-base font-extrabold text-white">
+              {newlyUnlocked.map((b) => `${b.title} (${b.levelName || `Level ${b.level}`})`).join(', ')}
             </h3>
             <p className="text-xs text-[#f5ba72]">
               {newlyUnlocked[0].description}

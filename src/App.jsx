@@ -351,7 +351,7 @@ function AppContent() {
 
         {showNav && (
           <footer className="border-t border-white/[0.07] bg-[#0c0b0a] py-6 px-4 text-center text-xs text-[#8d877c] mt-auto">
-            <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
               <span className="font-semibold text-[#a39e94]">
                 QuizCraft &copy; {new Date().getFullYear()} &mdash; AI Powered Interactive Learning
               </span>

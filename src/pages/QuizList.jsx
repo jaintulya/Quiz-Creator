@@ -123,7 +123,7 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-7 animate-fade-in">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-7 animate-fade-in">
 
       {/* ── 1. Page Header ── */}
       <div className="pb-4 border-b border-white/[0.08]">
