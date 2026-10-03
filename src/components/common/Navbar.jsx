@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Brain, BookOpen, Plus, LayoutDashboard, Trophy } from 'lucide-react';
 import UserMenu from '../auth/UserMenu.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -5,6 +6,26 @@ import { useAuth } from '../../context/AuthContext.jsx';
 export default function Navbar({ currentPage, onNavigate, onOpenAuth }) {
   const { user, isGuest } = useAuth();
   const hasAccess = !!(user || isGuest);
+
+  // When on the landing page ('home'), navbar starts 100% transparent
+  // and only acquires the frosted glass background after scrolling past the 3D hero section.
+  const [isScrolledPastHero, setIsScrolledPastHero] = useState(false);
+
+  useEffect(() => {
+    if (currentPage !== 'home') return;
+
+    const handleScroll = () => {
+      // 3D Model hero section scrolls away after ~420px
+      const scrolled = window.scrollY > 420;
+      setIsScrolledPastHero((prev) => (prev !== scrolled ? scrolled : prev));
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [currentPage]);
+
+  const isTransparent = currentPage === 'home' && !isScrolledPastHero;
 
   const handleCreateClick = () => {
     if (!hasAccess) {
@@ -40,7 +61,18 @@ export default function Navbar({ currentPage, onNavigate, onOpenAuth }) {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.07]" style={{ background: 'rgba(9,8,7,0.88)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        isTransparent
+          ? 'border-b border-transparent bg-transparent shadow-none'
+          : 'border-b border-white/[0.07] bg-[#090807]/90 shadow-md'
+      }`}
+      style={{
+        background: isTransparent ? 'transparent' : 'rgba(9,8,7,0.88)',
+        backdropFilter: isTransparent ? 'none' : 'blur(24px)',
+        WebkitBackdropFilter: isTransparent ? 'none' : 'blur(24px)',
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
 
         {/* Brand */}
