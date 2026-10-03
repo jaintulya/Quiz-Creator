@@ -311,30 +311,14 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
       {/* Live Quiz Metadata & Preview (shown ONLY when user clicks Preview Questions) */}
       {showPreview && questions.length > 0 && (
         <div id="questions-preview-section" className="glass-card p-5 sm:p-7 border-white/10 space-y-6 animate-fade-in scroll-mt-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/[0.08]">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <span>Generated Quiz Preview ({questions.length} Questions)</span>
-              </h2>
-              <p className="text-xs text-[#8d877c] mt-0.5">
-                Review questions and answers before saving to your library.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSaveQuiz}
-              disabled={saving}
-              className="btn-primary py-2.5 px-5 text-xs font-bold flex items-center gap-2 shadow-caramel-glow self-start sm:self-auto"
-            >
-              {saving ? (
-                <span className="w-3.5 h-3.5 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4 stroke-[2.5]" />
-              )}
-              <span>Create Quiz</span>
-            </button>
+          <div className="pb-4 border-b border-white/[0.08]">
+            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              <span>Generated Quiz Preview ({questions.length} Questions)</span>
+            </h2>
+            <p className="text-xs text-[#8d877c] mt-0.5">
+              Review questions and answers below before saving to your library.
+            </p>
           </div>
 
           {/* Metadata preview strip */}
@@ -418,9 +402,9 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
               {saving ? (
                 <span className="w-3.5 h-3.5 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
               ) : (
-                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <Sparkles className="w-4 h-4" />
               )}
-              <span>Create Quiz</span>
+              <span>Save to Library</span>
             </button>
           </div>
         </div>
