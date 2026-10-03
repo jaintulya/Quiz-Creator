@@ -315,10 +315,22 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
                   Start or create a quiz to practice your skills.
                 </p>
               </div>
-              <button onClick={() => onNavigate('create')} className="btn-primary py-2 px-4 text-xs gap-1.5 shadow-caramel-glow">
-                <Plus className="w-3.5 h-3.5" />
-                <span>Create with AI</span>
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                <button
+                  onClick={() => onNavigate('create')}
+                  className="btn-primary py-2 px-4 text-xs font-bold gap-1.5 shadow-caramel-glow"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create Quiz</span>
+                </button>
+                <button
+                  onClick={() => onNavigate('list')}
+                  className="btn-secondary py-2 px-4 text-xs font-bold gap-1.5"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>My Quizzes</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
