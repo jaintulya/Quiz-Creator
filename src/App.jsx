@@ -45,6 +45,22 @@ function AppContent() {
   const [authPromptMessage, setAuthPromptMessage] = useState('');
   const [prefillEmail, setPrefillEmail] = useState('');
 
+  // Keep browser tab title clean without any AI wording
+  useEffect(() => {
+    const titles = {
+      '/': 'QuizCraft',
+      '/dashboard': 'Dashboard — QuizCraft',
+      '/my-quizzes': 'My Quizzes — QuizCraft',
+      '/create-quiz': 'Create Quiz — QuizCraft',
+      '/profile': 'Profile — QuizCraft',
+      '/results': 'Results — QuizCraft',
+      '/play': 'Practice — QuizCraft',
+      '/result': 'Quiz Results — QuizCraft',
+      '/login': 'Sign In — QuizCraft',
+    };
+    document.title = titles[currentPath] || 'QuizCraft';
+  }, [currentPath]);
+
   const navigate = useCallback((target, options = {}) => {
     let path = target;
     if (target === 'home') {
@@ -357,7 +373,7 @@ function AppContent() {
           <footer className="border-t border-white/[0.07] bg-[#0c0b0a] py-6 px-4 text-center text-xs text-[#8d877c] mt-auto">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
               <span className="font-semibold text-[#a39e94]">
-                QuizCraft &copy; {new Date().getFullYear()} &mdash; AI Powered Interactive Learning
+                QuizCraft &copy; {new Date().getFullYear()} &mdash; Interactive Learning Platform
               </span>
               <div className="flex items-center gap-4 text-[#8d877c]">
                 {(user || isGuest) ? (
