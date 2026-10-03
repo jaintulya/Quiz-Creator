@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import {
   Brain, Sparkles, Zap, Target, Users, ArrowRight,
-  ChevronRight, Award, Check, Play, ArrowUp, ChevronDown
+  ChevronRight, Award, Check, Play, ArrowUp
 } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -74,12 +74,12 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
   const containerRef = useRef(null);
   const heroRef = useRef(null);
   const demoSectionRef = useRef(null);
-  const stepsTrackRef = useRef(null);
+  const progressBarRef = useRef(null);
+  const backToTopRef = useRef(null);
+  const scrollPctRef = useRef(null);
+  const heroCueRef = useRef(null);
 
   const [showDemo, setShowDemo] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [scrollY, setScrollY] = useState(0);
-  const [activeStepIndex, setActiveStepIndex] = useState(0);
 
   const handleStart = () => {
     if (onNavigate) {
@@ -105,27 +105,65 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  /* ── GSAP ScrollTrigger Integration ── */
+  /* ── Ultra-Performance GSAP ScrollTrigger (ZERO React Re-renders on Scroll) ── */
   useEffect(() => {
     const root = containerRef.current;
     if (!root) return;
 
-    // Check reduced motion
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const ctx = gsap.context(() => {
-      // 1. Global Page Scroll Tracker
+      // 1. Top Scroll Progress Bar — Hardware accelerated via scaleX
+      if (progressBarRef.current) {
+        gsap.to(progressBarRef.current, {
+          scaleX: 1,
+          ease: 'none',
+          scrollTrigger: {
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: 0.1,
+          },
+        });
+      }
+
+      // 2. Back to Top Pill & Percentage text update
       ScrollTrigger.create({
-        start: 'top top',
+        start: '450px top',
         end: 'bottom bottom',
+        onToggle: (self) => {
+          if (backToTopRef.current) {
+            if (self.isActive) {
+              backToTopRef.current.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+              backToTopRef.current.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
+            } else {
+              backToTopRef.current.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
+              backToTopRef.current.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+            }
+          }
+        },
         onUpdate: (self) => {
-          setScrollProgress(self.progress);
-          setScrollY(window.scrollY || window.pageYOffset);
+          if (scrollPctRef.current) {
+            scrollPctRef.current.textContent = `${Math.round(self.progress * 100)}%`;
+          }
         },
       });
 
+      // 3. Hero Scroll Cue fadeout
+      if (heroCueRef.current) {
+        gsap.to(heroCueRef.current, {
+          opacity: 0,
+          y: 14,
+          ease: 'power1.out',
+          scrollTrigger: {
+            start: 'top top',
+            end: '140px top',
+            scrub: true,
+          },
+        });
+      }
+
       if (!prefersReducedMotion) {
-        // 2. Parallax on ambient background glow orbs
+        // 4. Parallax on ambient background glow orbs
         gsap.to('.ambient-orb-1', {
           y: 280,
           ease: 'none',
@@ -146,24 +184,15 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
           },
         });
 
-        // 3. Scroll-linked steps timeline line
-        ScrollTrigger.create({
-          trigger: '.steps-container',
-          start: 'top 75%',
-          end: 'bottom 60%',
-          scrub: 0.3,
-          onUpdate: (self) => {
-            if (stepsTrackRef.current) {
-              stepsTrackRef.current.style.height = `${Math.min(self.progress * 100, 100)}%`;
-            }
-            if (self.progress < 0.33) {
-              setActiveStepIndex(0);
-            } else if (self.progress < 0.66) {
-              setActiveStepIndex(1);
-            } else {
-              setActiveStepIndex(2);
-            }
-          },
+        // 5. Staggered Step Highlight on scroll
+        const stepCards = gsap.utils.toArray('.scroll-step-card');
+        stepCards.forEach((card, idx) => {
+          ScrollTrigger.create({
+            trigger: card,
+            start: 'top 75%',
+            end: 'bottom 40%',
+            toggleClass: { targets: card, className: 'step-highlighted' },
+          });
         });
       }
     }, root);
@@ -172,18 +201,22 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
   }, []);
 
   return (
-    <div ref={containerRef} className="relative overflow-x-hidden bg-[#090807] text-[#f0ebe0]">
+    <div
+      ref={containerRef}
+      className="relative overflow-x-clip bg-[#090807] text-[#f0ebe0]"
+      style={{ touchAction: 'pan-y' }}
+    >
 
-      {/* ── 1. GLOBAL TOP SCROLL PROGRESS BAR ── */}
+      {/* ── 1. GLOBAL TOP SCROLL PROGRESS BAR (GPU Accelerated, No Re-renders) ── */}
       <div className="fixed top-0 left-0 right-0 h-[3px] bg-white/[0.04] z-50 pointer-events-none">
         <div
-          className="h-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-300 transition-all duration-75 origin-left shadow-[0_0_10px_rgba(245,186,114,0.7)]"
-          style={{ width: `${Math.round(scrollProgress * 100)}%` }}
+          ref={progressBarRef}
+          className="h-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-300 origin-left shadow-[0_0_10px_rgba(245,186,114,0.7)]"
+          style={{ transform: 'scaleX(0)' }}
         />
       </div>
 
       {/* ── 2. IMMERSIVE FULL-PAGE 3D WEBGL BACKGROUND ── */}
-      {/* Continuously transforms in space as visitor scrolls through sections */}
       <Landing3DScene className="fixed inset-0 pointer-events-none opacity-60 z-0" />
 
       {/* ── 3. AMBIENT MULTI-PLANE PARALLAX GLOW ORBS ── */}
@@ -205,23 +238,20 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
 
       {/* ── 4. FLOATING BACK TO TOP & SCROLL % PILL ── */}
       <div
-        className={`fixed bottom-6 right-6 z-40 transition-all duration-300 ${
-          scrollY > 400
-            ? 'opacity-100 translate-y-0 pointer-events-auto'
-            : 'opacity-0 translate-y-4 pointer-events-none'
-        }`}
+        ref={backToTopRef}
+        className="fixed bottom-6 right-6 z-40 opacity-0 translate-y-4 pointer-events-none transition-all duration-300"
       >
         <button
           onClick={scrollToTop}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-full glass-card border-white/10 hover:border-amber-400/40 bg-[#161310]/90 text-xs font-bold text-[#dedbd3] hover:text-white shadow-2xl backdrop-blur-xl transition-all group"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-full glass-card border-white/10 hover:border-amber-400/40 bg-[#161310]/95 text-xs font-bold text-[#dedbd3] hover:text-white shadow-2xl backdrop-blur-xl transition-all group"
           title="Scroll back to top"
           aria-label="Scroll to top"
         >
           <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center group-hover:-translate-y-0.5 transition-transform">
             <ArrowUp className="w-3 h-3" />
           </div>
-          <span className="font-mono text-[11px] text-amber-400/90">
-            {Math.round(scrollProgress * 100)}%
+          <span ref={scrollPctRef} className="font-mono text-[11px] text-amber-400/90">
+            0%
           </span>
         </button>
       </div>
@@ -351,8 +381,8 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
 
         {/* Scroll Cue at bottom of hero */}
         <div
-          className="pt-10 transition-opacity duration-300 flex flex-col items-center gap-1.5 text-[#8d877c]"
-          style={{ opacity: Math.max(0, 1 - scrollY / 120) }}
+          ref={heroCueRef}
+          className="pt-10 flex flex-col items-center gap-1.5 text-[#8d877c] pointer-events-none select-none"
         >
           <span className="text-[10px] uppercase font-bold tracking-widest text-[#8d877c]">
             Scroll to explore
@@ -365,7 +395,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
       </section>
 
       {/* ── 6. MARQUEE STRIP ── */}
-      <div className="py-3.5 border-y border-white/[0.07] bg-[#100f0d]/90 backdrop-blur-md relative z-10 overflow-hidden">
+      <div className="py-3.5 border-y border-white/[0.07] bg-[#100f0d]/90 backdrop-blur-md relative z-10 overflow-hidden pointer-events-none select-none">
         <div className="marquee-wrapper">
           <div className="flex gap-0 animate-marquee whitespace-nowrap" style={{ width: 'max-content' }}>
             {MARQUEE_ITEMS.map((item, i) => (
@@ -466,44 +496,31 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
             </p>
           </div>
 
-          {/* Interactive Steps Grid with Scroll Track */}
+          {/* Steps Grid with smooth highlight on scroll */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-            {STEPS.map((s, idx) => {
-              const isCurrentActive = activeStepIndex === idx;
-              return (
-                <div
-                  key={s.n}
-                  className={`glass-card p-6 sm:p-7 rounded-2xl border transition-all duration-300 flex flex-col items-center text-center gap-4 ${
-                    isCurrentActive
-                      ? 'border-amber-500/40 bg-[#191612] shadow-[0_0_20px_rgba(245,186,114,0.12)] scale-[1.02]'
-                      : 'border-white/[0.08] hover:border-amber-400/25'
-                  }`}
-                >
-                  <div
-                    className={`w-14 h-14 rounded-2xl flex items-center justify-center font-mono font-black text-xl transition-all duration-300 ${
-                      isCurrentActive
-                        ? 'bg-amber-500/25 border border-amber-400/60 text-amber-300 shadow-[0_0_12px_rgba(245,186,114,0.3)]'
-                        : 'bg-amber-500/10 border border-amber-500/20 text-amber-400/70'
-                    }`}
-                  >
-                    {s.n}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <h3 className={`text-base font-bold transition-colors ${isCurrentActive ? 'text-amber-300' : 'text-white'}`}>
-                      {s.title}
-                    </h3>
-                    <p className="text-xs text-[#8d877c] leading-relaxed">{s.desc}</p>
-                  </div>
-
-                  <div className="pt-2 border-t border-white/[0.06] w-full">
-                    <span className="text-[10px] font-bold text-amber-400/80 uppercase tracking-wider">
-                      {s.highlight}
-                    </span>
-                  </div>
+            {STEPS.map((s) => (
+              <div
+                key={s.n}
+                className="scroll-step-card glass-card p-6 sm:p-7 rounded-2xl border border-white/[0.08] hover:border-amber-400/40 hover:bg-[#181512] transition-all duration-300 flex flex-col items-center text-center gap-4"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center font-mono font-black text-xl shadow-sm transition-all duration-300">
+                  {s.n}
                 </div>
-              );
-            })}
+
+                <div className="space-y-1.5">
+                  <h3 className="text-base font-bold text-white transition-colors">
+                    {s.title}
+                  </h3>
+                  <p className="text-xs text-[#8d877c] leading-relaxed">{s.desc}</p>
+                </div>
+
+                <div className="pt-2 border-t border-white/[0.06] w-full">
+                  <span className="text-[10px] font-bold text-amber-400/80 uppercase tracking-wider">
+                    {s.highlight}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

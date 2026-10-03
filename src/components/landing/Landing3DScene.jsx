@@ -38,6 +38,8 @@ export default function Landing3DScene({ className = '' }) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
+    renderer.domElement.style.pointerEvents = 'none';
+    renderer.domElement.style.touchAction = 'none';
 
     container.appendChild(renderer.domElement);
 
@@ -292,7 +294,7 @@ export default function Landing3DScene({ className = '' }) {
     <div
       ref={mountRef}
       className={`pointer-events-none overflow-hidden ${className}`}
-      style={{ zIndex: 0 }}
+      style={{ zIndex: 0, pointerEvents: 'none', touchAction: 'none' }}
     />
   );
 }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   BookOpen, Flame, RotateCw, Heart, HeartCrack, CheckCircle2,
   XCircle, Clock, Bookmark, Sparkles, ArrowRight, RotateCcw,
-  Zap, Award, HelpCircle
+  Zap, Award, HelpCircle, X, ThumbsUp, Check
 } from 'lucide-react';
 
 /* ── Classic Mode Sample Questions ── */
@@ -470,10 +470,18 @@ export default function StudyModesPreview({ onStartMode }) {
                   {/* Feedback bar */}
                   {survivalSelected !== null && (
                     <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs flex items-center justify-between gap-2 animate-slide-up mt-2">
-                      <span className={survivalSelected === currentSurvival.correct ? 'text-emerald-300 font-bold' : 'text-rose-300 font-bold'}>
-                        {survivalSelected === currentSurvival.correct
-                          ? '✦ Excellent! Heart protected (+100 Survival XP)'
-                          : '✕ Heart broken! You lost 1 life.'}
+                      <span className={survivalSelected === currentSurvival.correct ? 'text-emerald-300 font-bold flex items-center gap-1.5' : 'text-rose-300 font-bold flex items-center gap-1.5'}>
+                        {survivalSelected === currentSurvival.correct ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span>Excellent! Heart protected (+100 Survival XP)</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                            <span>Heart broken! You lost 1 life.</span>
+                          </>
+                        )}
                       </span>
                       <button
                         onClick={handleNextSurvival}
@@ -534,6 +542,7 @@ export default function StudyModesPreview({ onStartMode }) {
             {/* Interactive 3D Flip Card */}
             <div
               className="relative w-full h-56 cursor-pointer select-none group [perspective:1000px]"
+              style={{ touchAction: 'pan-y' }}
               onClick={() => setIsFlipped((f) => !f)}
               role="button"
               tabIndex={0}
@@ -592,21 +601,24 @@ export default function StudyModesPreview({ onStartMode }) {
                     <span className="text-[10px] text-[#8d877c] mr-1 hidden sm:inline">Recall confidence:</span>
                     <button
                       onClick={() => handleRateFlashcard('hard')}
-                      className="px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-bold hover:bg-rose-500/25 transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-bold hover:bg-rose-500/25 transition-colors flex items-center gap-1.5"
                     >
-                      Hard ❌
+                      <span>Hard</span>
+                      <X className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => handleRateFlashcard('good')}
-                      className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold hover:bg-amber-500/25 transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold hover:bg-amber-500/25 transition-colors flex items-center gap-1.5"
                     >
-                      Good 👍
+                      <span>Good</span>
+                      <ThumbsUp className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => handleRateFlashcard('easy')}
-                      className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold hover:bg-emerald-500/25 transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold hover:bg-emerald-500/25 transition-colors flex items-center gap-1.5"
                     >
-                      Easy ⚡
+                      <span>Easy</span>
+                      <Zap className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
