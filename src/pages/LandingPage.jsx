@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import {
   Brain, Sparkles, Zap, Target, Users, ArrowRight,
-  ChevronRight, Award, Check, Play, ArrowUp
+  ChevronRight, Award, Check, Play
 } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -75,8 +75,6 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
   const heroRef = useRef(null);
   const demoSectionRef = useRef(null);
   const progressBarRef = useRef(null);
-  const backToTopRef = useRef(null);
-  const scrollPctRef = useRef(null);
   const heroCueRef = useRef(null);
 
   const [showDemo, setShowDemo] = useState(false);
@@ -101,11 +99,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
     });
   };
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  /* ── Ultra-Performance GSAP ScrollTrigger (ZERO React Re-renders on Scroll) ── */
+  /* ── Ultra-Performance GSAP ScrollTrigger ── */
   useEffect(() => {
     const root = containerRef.current;
     if (!root) return;
@@ -126,29 +120,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
         });
       }
 
-      // 2. Back to Top Pill & Percentage text update
-      ScrollTrigger.create({
-        start: '450px top',
-        end: 'bottom bottom',
-        onToggle: (self) => {
-          if (backToTopRef.current) {
-            if (self.isActive) {
-              backToTopRef.current.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
-              backToTopRef.current.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
-            } else {
-              backToTopRef.current.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
-              backToTopRef.current.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
-            }
-          }
-        },
-        onUpdate: (self) => {
-          if (scrollPctRef.current) {
-            scrollPctRef.current.textContent = `${Math.round(self.progress * 100)}%`;
-          }
-        },
-      });
-
-      // 3. Hero Scroll Cue fadeout
+      // 2. Hero Scroll Cue fadeout
       if (heroCueRef.current) {
         gsap.to(heroCueRef.current, {
           opacity: 0,
@@ -163,30 +135,9 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
       }
 
       if (!prefersReducedMotion) {
-        // 4. Parallax on ambient background glow orbs
-        gsap.to('.ambient-orb-1', {
-          y: 280,
-          ease: 'none',
-          scrollTrigger: {
-            start: 'top top',
-            end: 'bottom bottom',
-            scrub: 1.2,
-          },
-        });
-
-        gsap.to('.ambient-orb-2', {
-          y: -220,
-          ease: 'none',
-          scrollTrigger: {
-            start: 'top top',
-            end: 'bottom bottom',
-            scrub: 1.6,
-          },
-        });
-
-        // 5. Staggered Step Highlight on scroll
+        // 3. Staggered Step Highlight on scroll
         const stepCards = gsap.utils.toArray('.scroll-step-card');
-        stepCards.forEach((card, idx) => {
+        stepCards.forEach((card) => {
           ScrollTrigger.create({
             trigger: card,
             start: 'top 75%',
@@ -207,7 +158,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
       style={{ touchAction: 'pan-y' }}
     >
 
-      {/* ── 1. GLOBAL TOP SCROLL PROGRESS BAR (GPU Accelerated, No Re-renders) ── */}
+      {/* ── 1. GLOBAL TOP SCROLL PROGRESS BAR (GPU Accelerated) ── */}
       <div className="fixed top-0 left-0 right-0 h-[3px] bg-white/[0.04] z-50 pointer-events-none">
         <div
           ref={progressBarRef}
@@ -216,53 +167,27 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
         />
       </div>
 
-      {/* ── 2. IMMERSIVE FULL-PAGE 3D WEBGL BACKGROUND ── */}
-      <Landing3DScene className="fixed inset-0 pointer-events-none opacity-60 z-0" />
+      {/* ── 2. HERO SECTION (3D Model only here in the starting section) ── */}
+      <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-16 lg:py-24 z-10 overflow-hidden">
 
-      {/* ── 3. AMBIENT MULTI-PLANE PARALLAX GLOW ORBS ── */}
-      <div
-        className="ambient-orb-1 fixed top-10 left-1/4 w-[600px] h-[600px] rounded-full pointer-events-none z-0"
-        style={{
-          background: 'radial-gradient(circle, rgba(245,186,114,0.08) 0%, transparent 70%)',
-        }}
-      />
-      <div
-        className="ambient-orb-2 fixed bottom-20 right-1/4 w-[500px] h-[500px] rounded-full pointer-events-none z-0"
-        style={{
-          background: 'radial-gradient(circle, rgba(255,107,53,0.06) 0%, transparent 70%)',
-        }}
-      />
+        {/* 3D WebGL Model — strictly mounted inside Hero so it scrolls away naturally */}
+        <Landing3DScene className="absolute inset-0 pointer-events-none opacity-75 z-0" />
 
-      {/* Subtle dot grid pattern overlay */}
-      <div className="fixed inset-0 dot-grid opacity-25 pointer-events-none z-0" />
+        {/* Subtle dot grid pattern overlay for Hero */}
+        <div className="absolute inset-0 dot-grid opacity-30 pointer-events-none z-0" />
 
-      {/* ── 4. FLOATING BACK TO TOP & SCROLL % PILL ── */}
-      <div
-        ref={backToTopRef}
-        className="fixed bottom-6 right-6 z-40 opacity-0 translate-y-4 pointer-events-none transition-all duration-300"
-      >
-        <button
-          onClick={scrollToTop}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-full glass-card border-white/10 hover:border-amber-400/40 bg-[#161310]/95 text-xs font-bold text-[#dedbd3] hover:text-white shadow-2xl backdrop-blur-xl transition-all group"
-          title="Scroll back to top"
-          aria-label="Scroll to top"
-        >
-          <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center group-hover:-translate-y-0.5 transition-transform">
-            <ArrowUp className="w-3 h-3" />
-          </div>
-          <span ref={scrollPctRef} className="font-mono text-[11px] text-amber-400/90">
-            0%
-          </span>
-        </button>
-      </div>
-
-      {/* ── 5. HERO SECTION ── */}
-      <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-16 lg:py-24 z-10">
+        {/* Ambient Warm Radial Lighting for Hero */}
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[750px] h-[500px] pointer-events-none z-0"
+          style={{
+            background: 'radial-gradient(ellipse at 50% 0%, rgba(245,186,114,0.11) 0%, transparent 70%)',
+          }}
+        />
 
         {/* Main Hero Container */}
         <div
           ref={heroRef}
-          className={`max-w-7xl mx-auto w-full transition-all duration-500 my-auto ${
+          className={`relative z-10 max-w-7xl mx-auto w-full transition-all duration-500 my-auto ${
             showDemo
               ? 'grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center'
               : 'flex flex-col items-center text-center'
@@ -382,7 +307,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
         {/* Scroll Cue at bottom of hero */}
         <div
           ref={heroCueRef}
-          className="pt-10 flex flex-col items-center gap-1.5 text-[#8d877c] pointer-events-none select-none"
+          className="pt-10 flex flex-col items-center gap-1.5 text-[#8d877c] pointer-events-none select-none z-10"
         >
           <span className="text-[10px] uppercase font-bold tracking-widest text-[#8d877c]">
             Scroll to explore
@@ -394,7 +319,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
 
       </section>
 
-      {/* ── 6. MARQUEE STRIP ── */}
+      {/* ── 3. MARQUEE STRIP ── */}
       <div className="py-3.5 border-y border-white/[0.07] bg-[#100f0d]/90 backdrop-blur-md relative z-10 overflow-hidden pointer-events-none select-none">
         <div className="marquee-wrapper">
           <div className="flex gap-0 animate-marquee whitespace-nowrap" style={{ width: 'max-content' }}>
@@ -408,7 +333,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
         </div>
       </div>
 
-      {/* ── 7. THREE WAYS TO STUDY (Interactive Modes with Live Previews) ── */}
+      {/* ── 4. THREE WAYS TO STUDY (Interactive Modes with Live Previews) ── */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-12 relative z-10">
         <div className="text-center space-y-3.5 max-w-2xl mx-auto">
           {/* Centered pill */}
@@ -431,7 +356,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
         <StudyModesPreview onStartMode={handleStart} />
       </section>
 
-      {/* ── 8. PLATFORM HIGHLIGHTS (Features Grid) ── */}
+      {/* ── 5. PLATFORM HIGHLIGHTS (Features Grid) ── */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-14 space-y-3.5 max-w-xl mx-auto">
           <div className="flex items-center justify-center">
@@ -479,7 +404,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
         </div>
       </section>
 
-      {/* ── 9. HOW IT WORKS (Connected Scroll-Driven Timeline) ── */}
+      {/* ── 6. HOW IT WORKS (Connected Scroll-Driven Timeline) ── */}
       <section className="steps-container py-24 px-4 sm:px-6 lg:px-8 bg-[#0c0b0a]/90 backdrop-blur-md border-y border-white/[0.06] relative z-10">
         <div className="max-w-5xl mx-auto space-y-14">
           <div className="text-center space-y-3.5 max-w-md mx-auto">
@@ -496,7 +421,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
             </p>
           </div>
 
-          {/* Steps Grid with smooth highlight on scroll */}
+          {/* Steps Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
             {STEPS.map((s) => (
               <div
@@ -525,7 +450,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
         </div>
       </section>
 
-      {/* ── 10. FINAL CALL TO ACTION BANNER ── */}
+      {/* ── 7. FINAL CALL TO ACTION BANNER ── */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto relative z-10">
         <div className="glass-card p-8 sm:p-14 text-center relative overflow-hidden space-y-6 rounded-3xl border-amber-500/25 bg-gradient-to-b from-[#1b1712] to-[#12100e] shadow-2xl">
           <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400 shadow-sm">
