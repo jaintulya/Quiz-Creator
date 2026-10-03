@@ -4,7 +4,7 @@ import * as THREE from 'three';
 /**
  * Landing3DScene — High-performance interactive 3D WebGL canvas
  * Built with Three.js. Features an interactive orbital knowledge core,
- * ambient dust particles, mouse-reactive tilt, and scroll-linked camera dynamics.
+ * ambient dust particles, mouse-reactive tilt, and deep scroll-linked camera dynamics.
  */
 export default function Landing3DScene({ className = '' }) {
   const mountRef = useRef(null);
@@ -24,7 +24,7 @@ export default function Landing3DScene({ className = '' }) {
 
     // 1. Scene, Camera, Renderer
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x090807, 0.035);
+    scene.fog = new THREE.FogExp2(0x090807, 0.032);
 
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
     camera.position.set(0, 0, 8.5);
@@ -146,16 +146,14 @@ export default function Landing3DScene({ className = '' }) {
     });
 
     // 4. Ambient Starfield / Floating Knowledge Dust Particles
-    const particleCount = 280;
+    const particleCount = 300;
     const particlePositions = new Float32Array(particleCount * 3);
-    const particleScales = new Float32Array(particleCount);
 
     for (let i = 0; i < particleCount; i++) {
       const i3 = i * 3;
-      particlePositions[i3] = (Math.random() - 0.5) * 22;
-      particlePositions[i3 + 1] = (Math.random() - 0.5) * 16;
-      particlePositions[i3 + 2] = (Math.random() - 0.5) * 14;
-      particleScales[i] = Math.random();
+      particlePositions[i3] = (Math.random() - 0.5) * 24;
+      particlePositions[i3 + 1] = (Math.random() - 0.5) * 20;
+      particlePositions[i3 + 2] = (Math.random() - 0.5) * 16;
     }
 
     const particleGeo = new THREE.BufferGeometry();
@@ -163,18 +161,20 @@ export default function Landing3DScene({ className = '' }) {
 
     const particleMat = new THREE.PointsMaterial({
       color: 0xf5ba72,
-      size: 0.06,
+      size: 0.055,
       transparent: true,
-      opacity: 0.45,
+      opacity: 0.5,
       blending: THREE.AdditiveBlending,
     });
 
     const particles = new THREE.Points(particleGeo, particleMat);
     scene.add(particles);
 
-    // 5. Interactive Mouse & Scroll Position Tracking
+    // 5. Interactive Mouse & Smooth Scroll Tracking
     const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
     let scrollY = 0;
+    let targetScrollProgress = 0;
+    let smoothScrollProgress = 0;
 
     const handleMouseMove = (e) => {
       mouse.targetX = (e.clientX / window.innerWidth - 0.5) * 2;
@@ -183,10 +183,18 @@ export default function Landing3DScene({ className = '' }) {
 
     const handleScroll = () => {
       scrollY = window.scrollY || window.pageYOffset;
+      const maxScroll = Math.max(
+        document.documentElement.scrollHeight - window.innerHeight,
+        1
+      );
+      targetScrollProgress = Math.min(Math.max(scrollY / maxScroll, 0), 1);
     };
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
     window.addEventListener('scroll', handleScroll, { passive: true });
+
+    // Initial check
+    handleScroll();
 
     // 6. Responsive Resize Handler
     const handleResize = () => {
@@ -200,28 +208,30 @@ export default function Landing3DScene({ className = '' }) {
 
     window.addEventListener('resize', handleResize);
 
-    // 7. 60fps Animation Loop
+    // 7. 60fps Animation Loop with Scroll Damping
     let clock = new THREE.Clock();
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
       const time = clock.getElapsedTime();
 
-      // Damped mouse tracking (smooth lerp)
+      // Damped mouse tracking
       mouse.x += (mouse.targetX - mouse.x) * 0.05;
       mouse.y += (mouse.targetY - mouse.y) * 0.05;
 
+      // Damped scroll progress (smooth 60fps lerp)
+      smoothScrollProgress += (targetScrollProgress - smoothScrollProgress) * 0.06;
+
       // Base rotations
-      crystalMesh.rotation.y = time * 0.18;
-      crystalMesh.rotation.x = time * 0.12;
-      innerCoreMesh.rotation.y = -time * 0.35;
-      innerCoreMesh.rotation.z = time * 0.2;
+      crystalMesh.rotation.y = time * 0.16 + smoothScrollProgress * Math.PI * 1.5;
+      crystalMesh.rotation.x = time * 0.1;
+      innerCoreMesh.rotation.y = -time * 0.3 - smoothScrollProgress * Math.PI * 2;
+      innerCoreMesh.rotation.z = time * 0.18;
 
-      ring1Mesh.rotation.z = time * 0.22;
-      ring2Mesh.rotation.y = -time * 0.28;
+      ring1Mesh.rotation.z = time * 0.2 + smoothScrollProgress * 2;
+      ring2Mesh.rotation.y = -time * 0.25 - smoothScrollProgress * 2.5;
 
-      // Rotate satellites in 3D orbit
+      // Orbit satellites in 3D
       satellites.forEach((sat) => {
         sat.userData.angle += sat.userData.speed;
         sat.position.x = Math.cos(sat.userData.angle) * sat.userData.radius;
@@ -230,20 +240,22 @@ export default function Landing3DScene({ className = '' }) {
         sat.rotation.y += sat.userData.rotSpeedY;
       });
 
-      // Slowly drift background particles
-      particles.rotation.y = time * 0.02;
-      particles.rotation.x = time * 0.01;
+      // Background particles drift with time and scroll
+      particles.rotation.y = time * 0.015 + smoothScrollProgress * 0.8;
+      particles.rotation.x = time * 0.008;
+      particles.position.y = smoothScrollProgress * 3.5;
 
-      // Scroll scrubbing effect: gently tilt and descend core with scroll
-      const scrollFactor = Math.min(scrollY * 0.0018, 2.5);
-      coreGroup.position.y = -scrollFactor * 0.9;
-      coreGroup.rotation.y = mouse.x * 0.45 + scrollFactor * 0.8;
-      coreGroup.rotation.x = -mouse.y * 0.35;
+      // Scroll scrubbing effect: core spatial journey across the whole page
+      coreGroup.position.y = (0.2 - smoothScrollProgress * 1.8);
+      coreGroup.position.x = Math.sin(smoothScrollProgress * Math.PI * 1.2) * 1.5;
+      coreGroup.rotation.y = mouse.x * 0.35 + smoothScrollProgress * Math.PI;
+      coreGroup.rotation.x = -mouse.y * 0.25;
 
-      // Camera slight parallax tracking
-      camera.position.x = mouse.x * 0.6;
-      camera.position.y = -mouse.y * 0.4;
-      camera.lookAt(0, -scrollFactor * 0.5, 0);
+      // Camera slight parallax tracking + scroll dolly
+      camera.position.x = mouse.x * 0.5;
+      camera.position.y = -mouse.y * 0.35 - smoothScrollProgress * 0.5;
+      camera.position.z = 8.5 + Math.sin(smoothScrollProgress * Math.PI) * 1.2;
+      camera.lookAt(0, -smoothScrollProgress * 0.8, 0);
 
       renderer.render(scene, camera);
     };
@@ -257,7 +269,6 @@ export default function Landing3DScene({ className = '' }) {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
 
-      // Dispose Three.js objects
       crystalGeo.dispose();
       crystalMat.dispose();
       innerCoreGeo.dispose();
@@ -280,8 +291,8 @@ export default function Landing3DScene({ className = '' }) {
   return (
     <div
       ref={mountRef}
-      className={`absolute inset-0 pointer-events-none overflow-hidden ${className}`}
-      style={{ zIndex: 1 }}
+      className={`pointer-events-none overflow-hidden ${className}`}
+      style={{ zIndex: 0 }}
     />
   );
 }

@@ -1,11 +1,15 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
   Brain, Sparkles, Zap, Target, Users, ArrowRight,
-  ChevronRight, Award, Check, Play
+  ChevronRight, Award, Check, Play, ArrowUp, ChevronDown
 } from 'lucide-react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Landing3DScene from '../components/landing/Landing3DScene.jsx';
 import LiveQuizDemo from '../components/landing/LiveQuizDemo.jsx';
 import StudyModesPreview from '../components/landing/StudyModesPreview.jsx';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const FEATURES = [
   {
@@ -50,16 +54,19 @@ const STEPS = [
     n: '01',
     title: 'Pick Any Topic',
     desc: 'Select from computer science, science, general knowledge, or type custom notes.',
+    highlight: 'Instant AI-Powered Curation',
   },
   {
     n: '02',
     title: 'Practice Interactively',
     desc: 'Choose Classic MCQ, high-intensity Survival Mode, or Spaced Repetition Flashcards.',
+    highlight: 'Real-Time Pace & Hearts',
   },
   {
     n: '03',
     title: 'Track & Master',
     desc: 'Review mistakes, unlock 3-tier masteries, and watch your accuracy reach 90% and beyond.',
+    highlight: '30-Day Study Heatmap',
   },
 ];
 
@@ -67,8 +74,12 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
   const containerRef = useRef(null);
   const heroRef = useRef(null);
   const demoSectionRef = useRef(null);
+  const stepsTrackRef = useRef(null);
 
   const [showDemo, setShowDemo] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [scrollY, setScrollY] = useState(0);
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
 
   const handleStart = () => {
     if (onNavigate) {
@@ -90,37 +101,145 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
     });
   };
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  /* ── GSAP ScrollTrigger Integration ── */
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+
+    // Check reduced motion
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const ctx = gsap.context(() => {
+      // 1. Global Page Scroll Tracker
+      ScrollTrigger.create({
+        start: 'top top',
+        end: 'bottom bottom',
+        onUpdate: (self) => {
+          setScrollProgress(self.progress);
+          setScrollY(window.scrollY || window.pageYOffset);
+        },
+      });
+
+      if (!prefersReducedMotion) {
+        // 2. Parallax on ambient background glow orbs
+        gsap.to('.ambient-orb-1', {
+          y: 280,
+          ease: 'none',
+          scrollTrigger: {
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: 1.2,
+          },
+        });
+
+        gsap.to('.ambient-orb-2', {
+          y: -220,
+          ease: 'none',
+          scrollTrigger: {
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: 1.6,
+          },
+        });
+
+        // 3. Scroll-linked steps timeline line
+        ScrollTrigger.create({
+          trigger: '.steps-container',
+          start: 'top 75%',
+          end: 'bottom 60%',
+          scrub: 0.3,
+          onUpdate: (self) => {
+            if (stepsTrackRef.current) {
+              stepsTrackRef.current.style.height = `${Math.min(self.progress * 100, 100)}%`;
+            }
+            if (self.progress < 0.33) {
+              setActiveStepIndex(0);
+            } else if (self.progress < 0.66) {
+              setActiveStepIndex(1);
+            } else {
+              setActiveStepIndex(2);
+            }
+          },
+        });
+      }
+    }, root);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
     <div ref={containerRef} className="relative overflow-x-hidden bg-[#090807] text-[#f0ebe0]">
 
-      {/* ── HERO SECTION WITH 3D WEBGL SCENE ── */}
-      <section className="relative min-h-[88vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16 lg:py-24 overflow-hidden">
-
-        {/* Interactive Three.js 3D WebGL Canvas */}
-        <Landing3DScene className="opacity-75" />
-
-        {/* Subtle dot grid pattern overlay */}
-        <div className="absolute inset-0 dot-grid opacity-30 pointer-events-none" />
-
-        {/* Ambient Warm Radial Lighting */}
+      {/* ── 1. GLOBAL TOP SCROLL PROGRESS BAR ── */}
+      <div className="fixed top-0 left-0 right-0 h-[3px] bg-white/[0.04] z-50 pointer-events-none">
         <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-[750px] h-[500px] pointer-events-none"
-          style={{
-            background: 'radial-gradient(ellipse at 50% 0%, rgba(245,186,114,0.11) 0%, transparent 70%)',
-          }}
+          className="h-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-300 transition-all duration-75 origin-left shadow-[0_0_10px_rgba(245,186,114,0.7)]"
+          style={{ width: `${Math.round(scrollProgress * 100)}%` }}
         />
+      </div>
+
+      {/* ── 2. IMMERSIVE FULL-PAGE 3D WEBGL BACKGROUND ── */}
+      {/* Continuously transforms in space as visitor scrolls through sections */}
+      <Landing3DScene className="fixed inset-0 pointer-events-none opacity-60 z-0" />
+
+      {/* ── 3. AMBIENT MULTI-PLANE PARALLAX GLOW ORBS ── */}
+      <div
+        className="ambient-orb-1 fixed top-10 left-1/4 w-[600px] h-[600px] rounded-full pointer-events-none z-0"
+        style={{
+          background: 'radial-gradient(circle, rgba(245,186,114,0.08) 0%, transparent 70%)',
+        }}
+      />
+      <div
+        className="ambient-orb-2 fixed bottom-20 right-1/4 w-[500px] h-[500px] rounded-full pointer-events-none z-0"
+        style={{
+          background: 'radial-gradient(circle, rgba(255,107,53,0.06) 0%, transparent 70%)',
+        }}
+      />
+
+      {/* Subtle dot grid pattern overlay */}
+      <div className="fixed inset-0 dot-grid opacity-25 pointer-events-none z-0" />
+
+      {/* ── 4. FLOATING BACK TO TOP & SCROLL % PILL ── */}
+      <div
+        className={`fixed bottom-6 right-6 z-40 transition-all duration-300 ${
+          scrollY > 400
+            ? 'opacity-100 translate-y-0 pointer-events-auto'
+            : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+      >
+        <button
+          onClick={scrollToTop}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-full glass-card border-white/10 hover:border-amber-400/40 bg-[#161310]/90 text-xs font-bold text-[#dedbd3] hover:text-white shadow-2xl backdrop-blur-xl transition-all group"
+          title="Scroll back to top"
+          aria-label="Scroll to top"
+        >
+          <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center group-hover:-translate-y-0.5 transition-transform">
+            <ArrowUp className="w-3 h-3" />
+          </div>
+          <span className="font-mono text-[11px] text-amber-400/90">
+            {Math.round(scrollProgress * 100)}%
+          </span>
+        </button>
+      </div>
+
+      {/* ── 5. HERO SECTION ── */}
+      <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-16 lg:py-24 z-10">
 
         {/* Main Hero Container */}
         <div
           ref={heroRef}
-          className={`relative z-20 max-w-7xl mx-auto w-full transition-all duration-500 ${
+          className={`max-w-7xl mx-auto w-full transition-all duration-500 my-auto ${
             showDemo
               ? 'grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center'
               : 'flex flex-col items-center text-center'
           }`}
         >
 
-          {/* Hero Copy & CTAs — Uses smooth CSS stagger without JS flash */}
+          {/* Hero Copy & CTAs */}
           <div
             className={`space-y-6 ${
               showDemo
@@ -129,7 +248,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
             }`}
           >
 
-            {/* Pill Tag — Perfectly centered with icon aligned */}
+            {/* Pill Tag */}
             <div
               className="flex items-center justify-center lg:justify-start animate-slide-up"
               style={{ animationDelay: '0.05s', animationFillMode: 'both' }}
@@ -214,9 +333,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
 
           </div>
 
-          {/* When showDemo is true:
-              - On Desktop (lg): Appears side-by-side in right column
-              - On Mobile: Appears directly below the hero buttons */}
+          {/* When showDemo is true: side-by-side on desktop, below on mobile */}
           {showDemo && (
             <div
               ref={demoSectionRef}
@@ -232,10 +349,23 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
 
         </div>
 
+        {/* Scroll Cue at bottom of hero */}
+        <div
+          className="pt-10 transition-opacity duration-300 flex flex-col items-center gap-1.5 text-[#8d877c]"
+          style={{ opacity: Math.max(0, 1 - scrollY / 120) }}
+        >
+          <span className="text-[10px] uppercase font-bold tracking-widest text-[#8d877c]">
+            Scroll to explore
+          </span>
+          <div className="w-5 h-8 rounded-full border border-white/15 flex items-start justify-center p-1">
+            <div className="w-1 h-2 rounded-full bg-amber-400 animate-bounce" />
+          </div>
+        </div>
+
       </section>
 
-      {/* ── MARQUEE STRIP ── */}
-      <div className="py-3.5 border-y border-white/[0.07] bg-[#100f0d] overflow-hidden">
+      {/* ── 6. MARQUEE STRIP ── */}
+      <div className="py-3.5 border-y border-white/[0.07] bg-[#100f0d]/90 backdrop-blur-md relative z-10 overflow-hidden">
         <div className="marquee-wrapper">
           <div className="flex gap-0 animate-marquee whitespace-nowrap" style={{ width: 'max-content' }}>
             {MARQUEE_ITEMS.map((item, i) => (
@@ -248,10 +378,10 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
         </div>
       </div>
 
-      {/* ── THREE WAYS TO STUDY (With Live Playable Previews for All 3 Modes) ── */}
-      <section className="py-20 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-12">
+      {/* ── 7. THREE WAYS TO STUDY (Interactive Modes with Live Previews) ── */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-12 relative z-10">
         <div className="text-center space-y-3.5 max-w-2xl mx-auto">
-          {/* Centered pill with icon aligned */}
+          {/* Centered pill */}
           <div className="flex items-center justify-center">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-[#f5ba72] text-[11px] font-bold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -267,14 +397,13 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
           </p>
         </div>
 
-        {/* Live Interactive Study Modes Showcase (With playable mini-previews) */}
+        {/* Live Interactive Study Modes Showcase */}
         <StudyModesPreview onStartMode={handleStart} />
       </section>
 
-      {/* ── PLATFORM HIGHLIGHTS (Features Grid) ── */}
-      <section className="py-20 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      {/* ── 8. PLATFORM HIGHLIGHTS (Features Grid) ── */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-14 space-y-3.5 max-w-xl mx-auto">
-          {/* Centered pill with icon aligned */}
           <div className="flex items-center justify-center">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-[#f5ba72] text-[11px] font-bold uppercase tracking-wider">
               <Award className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -320,11 +449,10 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS (Timeline) ── */}
-      <section className="py-20 sm:py-24 px-4 sm:px-6 lg:px-8 bg-[#0c0b0a] border-y border-white/[0.06]">
+      {/* ── 9. HOW IT WORKS (Connected Scroll-Driven Timeline) ── */}
+      <section className="steps-container py-24 px-4 sm:px-6 lg:px-8 bg-[#0c0b0a]/90 backdrop-blur-md border-y border-white/[0.06] relative z-10">
         <div className="max-w-5xl mx-auto space-y-14">
           <div className="text-center space-y-3.5 max-w-md mx-auto">
-            {/* Centered pill with icon aligned */}
             <div className="flex items-center justify-center">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-[#f5ba72] text-[11px] font-bold uppercase tracking-wider">
                 <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -338,28 +466,50 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
             </p>
           </div>
 
-          {/* Steps Grid */}
+          {/* Interactive Steps Grid with Scroll Track */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-            {STEPS.map((s) => (
-              <div
-                key={s.n}
-                className="glass-card p-6 sm:p-7 rounded-2xl border-white/[0.08] hover:border-amber-400/25 flex flex-col items-center text-center gap-4 transition-all duration-300"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 font-mono font-black text-xl shadow-sm">
-                  {s.n}
+            {STEPS.map((s, idx) => {
+              const isCurrentActive = activeStepIndex === idx;
+              return (
+                <div
+                  key={s.n}
+                  className={`glass-card p-6 sm:p-7 rounded-2xl border transition-all duration-300 flex flex-col items-center text-center gap-4 ${
+                    isCurrentActive
+                      ? 'border-amber-500/40 bg-[#191612] shadow-[0_0_20px_rgba(245,186,114,0.12)] scale-[1.02]'
+                      : 'border-white/[0.08] hover:border-amber-400/25'
+                  }`}
+                >
+                  <div
+                    className={`w-14 h-14 rounded-2xl flex items-center justify-center font-mono font-black text-xl transition-all duration-300 ${
+                      isCurrentActive
+                        ? 'bg-amber-500/25 border border-amber-400/60 text-amber-300 shadow-[0_0_12px_rgba(245,186,114,0.3)]'
+                        : 'bg-amber-500/10 border border-amber-500/20 text-amber-400/70'
+                    }`}
+                  >
+                    {s.n}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <h3 className={`text-base font-bold transition-colors ${isCurrentActive ? 'text-amber-300' : 'text-white'}`}>
+                      {s.title}
+                    </h3>
+                    <p className="text-xs text-[#8d877c] leading-relaxed">{s.desc}</p>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/[0.06] w-full">
+                    <span className="text-[10px] font-bold text-amber-400/80 uppercase tracking-wider">
+                      {s.highlight}
+                    </span>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-base font-bold text-white">{s.title}</h3>
-                  <p className="text-xs text-[#8d877c] leading-relaxed">{s.desc}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* ── FINAL CALL TO ACTION BANNER ── */}
-      <section className="py-20 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+      {/* ── 10. FINAL CALL TO ACTION BANNER ── */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto relative z-10">
         <div className="glass-card p-8 sm:p-14 text-center relative overflow-hidden space-y-6 rounded-3xl border-amber-500/25 bg-gradient-to-b from-[#1b1712] to-[#12100e] shadow-2xl">
           <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400 shadow-sm">
             <Brain className="w-7 h-7" />
