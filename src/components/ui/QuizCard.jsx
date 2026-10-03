@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { BookOpen, Layers, Brain, Play, Edit3, RefreshCw, Code, Trash2, Cloud, Copy, Check, RotateCw } from 'lucide-react';
-import { use3DTilt } from '../../utils/use3DTilt.js';
 
 export default function QuizCard({
   quiz,
@@ -17,13 +16,6 @@ export default function QuizCard({
   const [codeChangedMsg, setCodeChangedMsg] = useState(false);
   const qCount = quiz.questions?.length || 0;
   const quizCode = quiz.code || quiz.id;
-
-  const { cardRef, glareStyle } = use3DTilt({
-    max: 8,
-    perspective: 900,
-    scale: 1.015,
-    speed: 350,
-  });
 
   const handleCopyCode = async (e) => {
     e.stopPropagation();
@@ -78,30 +70,20 @@ export default function QuizCard({
   const IconComponent = currentTheme.icon;
 
   return (
-    <div
-      ref={cardRef}
-      className="glass-card-hover p-6 sm:p-7 flex flex-col justify-between gap-5 relative group min-h-[200px] overflow-hidden transform-gpu"
-      style={{ transformStyle: 'preserve-3d' }}
-    >
-      {/* Specular 3D glare highlight */}
-      <div
-        className="absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-300 z-10"
-        style={{
-          opacity: glareStyle.opacity,
-          background: `radial-gradient(circle 260px at ${glareStyle.x}% ${glareStyle.y}%, rgba(255,255,255,0.12), transparent 75%)`,
-        }}
-      />
+    <div className="glass-card-hover p-6 sm:p-7 flex flex-col justify-between gap-5 relative group min-h-[200px] overflow-hidden rounded-2xl border border-white/10 hover:border-[#f5ba72]/45 transition-all duration-300">
+      {/* Steady ambient glow overlay that illuminates smoothly on hover */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#f5ba72]/[0.08] via-[#f5ba72]/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
       {/* Top Details */}
       <div>
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex items-start gap-3.5 min-w-0">
-            {/* Larger Colored Icon Tile */}
-            <div className={`w-13 h-13 sm:w-14 sm:h-14 rounded-2xl ${currentTheme.iconBg} border ${currentTheme.iconBorder} flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform duration-300`}>
+            {/* Larger Colored Icon Tile with micro-scale on hover */}
+            <div className={`w-13 h-13 sm:w-14 sm:h-14 rounded-2xl ${currentTheme.iconBg} border ${currentTheme.iconBorder} flex items-center justify-center shrink-0 shadow-md group-hover:scale-110 group-hover:shadow-[0_0_18px_rgba(245,186,114,0.22)] transition-all duration-300`}>
               <IconComponent className={`w-6 h-6 ${currentTheme.iconColor}`} />
             </div>
             <div className="min-w-0 pt-0.5">
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-caramel-300 transition-colors truncate">
+                <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-[#f5ba72] transition-colors truncate">
                   {quiz.title}
                 </h3>
                 {quiz.isCloud && (
@@ -158,7 +140,7 @@ export default function QuizCard({
       <div className="pt-3 border-t border-white/[0.08] flex items-center justify-between gap-3">
         <button
           onClick={() => onStart(quiz)}
-          className="btn-primary flex-1 py-2.5 px-4 text-xs sm:text-sm font-bold shadow-sm flex items-center justify-center gap-2"
+          className="btn-primary flex-1 py-2.5 px-4 text-xs sm:text-sm font-bold shadow-sm flex items-center justify-center gap-2 group-hover:shadow-caramel-glow transition-all duration-300"
         >
           <Play className="w-4 h-4 fill-slate-950" />
           <span>Start Quiz</span>
