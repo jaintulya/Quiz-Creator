@@ -5,11 +5,12 @@ import { buildAIPrompt } from '../../utils/aiPrompt.js';
 export default function AIPromptModal({ onClose, defaultTopic = '' }) {
   const [topic, setTopic] = useState(defaultTopic);
   const [count, setCount] = useState(5);
+  const [difficulty, setDifficulty] = useState('Medium');
   const [copied, setCopied] = useState(false);
 
   const promptText = useMemo(() => {
-    return buildAIPrompt(topic, count);
-  }, [topic, count]);
+    return buildAIPrompt(topic, count, difficulty);
+  }, [topic, count, difficulty]);
 
   const handleCopy = async () => {
     try {
@@ -65,8 +66,18 @@ export default function AIPromptModal({ onClose, defaultTopic = '' }) {
 
         {/* Customization Controls */}
         <div className="p-4 sm:p-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="sm:col-span-2">
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#f5ba72] flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#f5ba72]" />
+              Customize Your Prompt
+            </span>
+            <span className="text-[10px] text-[#8d877c]">
+              Tailor question output parameters
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+            <div className="sm:col-span-6">
               <label className="text-xs font-semibold text-[#a39e94] block mb-1">
                 Quiz Topic / Notes (Optional)
               </label>
@@ -79,7 +90,23 @@ export default function AIPromptModal({ onClose, defaultTopic = '' }) {
               />
             </div>
 
-            <div>
+            <div className="sm:col-span-3">
+              <label className="text-xs font-semibold text-[#a39e94] block mb-1">
+                Difficulty Level
+              </label>
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+                className="input-field text-xs sm:text-sm py-2 px-3 w-full appearance-none cursor-pointer"
+              >
+                <option value="Easy" className="bg-[#1b1713] text-white">Easy</option>
+                <option value="Medium" className="bg-[#1b1713] text-white">Medium</option>
+                <option value="Hard" className="bg-[#1b1713] text-white">Hard</option>
+                <option value="Exam Level" className="bg-[#1b1713] text-white">Exam Level</option>
+              </select>
+            </div>
+
+            <div className="sm:col-span-3">
               <label className="text-xs font-semibold text-[#a39e94] block mb-1">
                 Question Count
               </label>
@@ -93,6 +120,8 @@ export default function AIPromptModal({ onClose, defaultTopic = '' }) {
                 <option value={10} className="bg-[#1b1713] text-white">10 Questions</option>
                 <option value={15} className="bg-[#1b1713] text-white">15 Questions</option>
                 <option value={20} className="bg-[#1b1713] text-white">20 Questions</option>
+                <option value={25} className="bg-[#1b1713] text-white">25 Questions</option>
+                <option value={30} className="bg-[#1b1713] text-white">30 Questions</option>
               </select>
             </div>
           </div>
