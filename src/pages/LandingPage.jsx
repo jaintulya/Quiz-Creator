@@ -92,9 +92,9 @@ const MARQUEE_ITEMS = [
 ];
 
 const TESTIMONIALS = [
-  { name: 'Swati Vyas', role: 'BCA, 2nd Year', text: 'Paste notes → get quiz. That\'s it. I used QuizCraft for my entire OS semester and the results show.', avatar: 'S', score: '91%' },
-  { name: 'Devarsh Jain', role: 'BCA, 3rd Year', text: 'The AI quiz generator is genuinely clever. I just enter my lecture topic and get exam-grade MCQs instantly.', avatar: 'D', score: '88%' },
-  { name: 'Rishiraj Rathod', role: 'BECE, 2nd Year', text: 'Shuffle + timer mode changed how I prepare. I finish revision 3x faster now and score consistently.', avatar: 'R', score: '94%' },
+  { name: 'Sarah Jenkins', role: 'BCA, 2nd Year', text: 'Paste notes → get quiz. That\'s it. I used QuizCraft for my entire OS semester and the results show.', avatar: 'S', score: '91%' },
+  { name: 'David Chen', role: 'BCA, 3rd Year', text: 'The AI quiz generator is genuinely clever. I just enter my lecture topic and get exam-grade MCQs instantly.', avatar: 'D', score: '88%' },
+  { name: 'Marcus Vance', role: 'BECE, 2nd Year', text: 'Shuffle + timer mode changed how I prepare. I finish revision 3x faster now and score consistently.', avatar: 'M', score: '94%' },
 ];
 
 const STEPS = [

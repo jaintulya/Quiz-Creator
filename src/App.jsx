@@ -39,21 +39,43 @@ function AppContent() {
 
   const [currentPath, setCurrentPath] = useState(getInitialPath);
   const [activeQuiz, setActiveQuiz] = useState(null);
+  const [editingQuiz, setEditingQuiz] = useState(null);
   const [quizResult, setQuizResult] = useState(null);
   const [authPromptMessage, setAuthPromptMessage] = useState('');
   const [prefillEmail, setPrefillEmail] = useState('');
 
   const navigate = useCallback((target, options = {}) => {
     let path = target;
-    if (target === 'home') path = '/';
-    else if (target === 'dashboard') path = '/dashboard';
-    else if (target === 'create' || target === 'create-quiz') path = '/create-quiz';
-    else if (target === 'list' || target === 'my-quizzes' || target === 'quizzes') path = '/my-quizzes';
-    else if (target === 'profile') path = '/profile';
-    else if (target === 'play') path = '/play';
-    else if (target === 'result') path = '/result';
-    else if (target === 'results' || target === 'history') path = '/results';
-    else if (target === 'login') path = '/login';
+    if (target === 'home') {
+      path = '/';
+      setEditingQuiz(null);
+    } else if (target === 'dashboard') {
+      path = '/dashboard';
+      setEditingQuiz(null);
+    } else if (target === 'create' || target === 'create-quiz') {
+      path = '/create-quiz';
+      if (!options.isEdit) {
+        setEditingQuiz(null);
+      }
+    } else if (target === 'list' || target === 'my-quizzes' || target === 'quizzes') {
+      path = '/my-quizzes';
+      setEditingQuiz(null);
+    } else if (target === 'profile') {
+      path = '/profile';
+      setEditingQuiz(null);
+    } else if (target === 'play') {
+      path = '/play';
+      setEditingQuiz(null);
+    } else if (target === 'result') {
+      path = '/result';
+      setEditingQuiz(null);
+    } else if (target === 'results' || target === 'history') {
+      path = '/results';
+      setEditingQuiz(null);
+    } else if (target === 'login') {
+      path = '/login';
+      setEditingQuiz(null);
+    }
     if (options.promptMessage !== undefined) {
       setAuthPromptMessage(options.promptMessage);
     }
@@ -100,6 +122,13 @@ function AppContent() {
     }
   }, [user, isGuest, loading, currentPath, navigate]);
 
+  // Reset active and editing quiz when switching accounts or logging out
+  useEffect(() => {
+    setActiveQuiz(null);
+    setEditingQuiz(null);
+    setQuizResult(null);
+  }, [user?.id, isGuest]);
+
   // Direct launch via URL query parameter (e.g. /play?quizId=...)
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -135,8 +164,8 @@ function AppContent() {
   };
 
   const handleEditQuiz = (quiz) => {
-    setActiveQuiz(quiz);
-    navigate('/create-quiz');
+    setEditingQuiz(quiz);
+    navigate('/create-quiz', { isEdit: true });
   };
 
   const handleFinish = (result) => {
@@ -244,7 +273,7 @@ function AppContent() {
           {currentPath === '/create-quiz' && (user || isGuest) && (
             <CreateQuiz
               onNavigate={navigate}
-              editQuiz={activeQuiz}
+              editQuiz={editingQuiz}
               onOpenAuth={handleOpenAuth}
             />
           )}

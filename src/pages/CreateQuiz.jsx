@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Plus, CheckCircle2, AlertCircle, FileJson,
   Sparkles, ArrowLeft, Lock, LogIn, Check, Eye
@@ -25,6 +25,27 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(Boolean(editQuiz));
+
+  // Sync state whenever editQuiz prop changes (prevents leftover data when creating new quiz)
+  useEffect(() => {
+    if (editQuiz) {
+      setTitle(editQuiz.title || '');
+      setDescription(editQuiz.description || '');
+      setCategory(editQuiz.category || 'General');
+      setQuestions(editQuiz.questions || []);
+      setJsonText(editQuiz.questions ? JSON.stringify(editQuiz.questions, null, 2) : '');
+      setShowPreview(true);
+    } else {
+      setTitle('');
+      setDescription('');
+      setCategory('General');
+      setQuestions([]);
+      setJsonText('');
+      setShowPreview(false);
+      setError('');
+      setSuccess('');
+    }
+  }, [editQuiz]);
 
   // Authentication check
   if (!user && !isGuest) {
@@ -86,12 +107,21 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
     }
   };
 
-  // ── Save Quiz ─────────────────────────────────────────────────────────────
+  // ── Instant Create / Save Quiz Directly from JSON ──────────────────────────
   const handleSaveQuiz = async () => {
     setError('');
     setSuccess('');
 
+    // If jsonText is empty and questions are also empty, notify user
+    if (!jsonText.trim() && (!questions || questions.length === 0)) {
+      setError('Please enter or paste your quiz questions (JSON format) before creating.');
+      return;
+    }
+
     let finalQuestions = questions;
+    let detectedTitle = '';
+
+    // Directly parse and validate whatever JSON text is in the box
     if (jsonText.trim()) {
       const res = validateQuizJSON(jsonText, title);
       if (!res.valid) {
@@ -100,20 +130,28 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
       }
       finalQuestions = res.data;
       setQuestions(res.data);
-      if (res.extractedTitle && !title.trim()) {
-        setTitle(res.extractedTitle);
+      if (res.extractedTitle) {
+        detectedTitle = res.extractedTitle;
+        if (!title.trim()) {
+          setTitle(res.extractedTitle);
+        }
       }
-    }
-
-    const finalTitle = title.trim();
-    if (!finalTitle) {
-      setError('Please provide a title for your quiz.');
-      return;
     }
 
     if (!finalQuestions || finalQuestions.length === 0) {
       setError('Your quiz must contain at least one question before saving.');
       return;
+    }
+
+    // Determine final title: input field > extracted from JSON > first question preview > default
+    let finalTitle = title.trim();
+    if (!finalTitle && detectedTitle) {
+      finalTitle = detectedTitle;
+    }
+    if (!finalTitle) {
+      const firstQ = finalQuestions[0]?.question || 'Custom Assessment';
+      finalTitle = firstQ.length > 45 ? `${firstQ.slice(0, 42)}...` : firstQ;
+      setTitle(finalTitle);
     }
 
     setSaving(true);
@@ -129,7 +167,7 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
 
       setTimeout(() => {
         onNavigate('list');
-      }, 1200);
+      }, 900);
     } catch (err) {
       setError(err.message || 'Failed to save quiz.');
     } finally {
@@ -151,7 +189,7 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
             <span>Back to Quizzes</span>
           </button>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            {editQuiz ? 'Edit Quiz' : 'Create New'} <span className="gradient-text">Quiz</span>
+            {editQuiz ? 'Edit' : 'Create New'} <span className="gradient-text">Quiz</span>
           </h1>
           <p className="text-xs sm:text-sm text-[#8d877c] mt-1">
             Build custom exams and assessments with questions, options, and answer keys.
@@ -251,7 +289,7 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
               ) : (
                 <Plus className="w-4 h-4 stroke-[2.5]" />
               )}
-              <span>{editQuiz ? 'Update Quiz' : 'Create Quiz'}</span>
+              <span>Create Quiz</span>
             </button>
           </div>
         </div>
@@ -280,9 +318,9 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
               {saving ? (
                 <span className="w-3.5 h-3.5 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
               ) : (
-                <Sparkles className="w-4 h-4" />
+                <Plus className="w-4 h-4 stroke-[2.5]" />
               )}
-              <span>Save to Library</span>
+              <span>Create Quiz</span>
             </button>
           </div>
 
@@ -367,9 +405,9 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
               {saving ? (
                 <span className="w-3.5 h-3.5 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
               ) : (
-                <Sparkles className="w-4 h-4" />
+                <Plus className="w-4 h-4 stroke-[2.5]" />
               )}
-              <span>Save to Library</span>
+              <span>Create Quiz</span>
             </button>
           </div>
         </div>

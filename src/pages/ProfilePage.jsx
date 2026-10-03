@@ -234,7 +234,7 @@ export default function ProfilePage({ onNavigate }) {
                   type="text"
                   value={editFullName}
                   onChange={(e) => setEditFullName(e.target.value)}
-                  placeholder="e.g. Neev Jain"
+                  placeholder="Enter your full name"
                   className="input-field text-xs sm:text-sm py-2 px-3 w-full"
                 />
                 <p className="text-[10px] text-[#8d877c] mt-1">
