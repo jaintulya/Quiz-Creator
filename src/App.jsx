@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage.jsx';
 import ResultsHistoryPage from './pages/ResultsHistoryPage.jsx';
 import NotFound from './components/common/NotFound.jsx';
 import ErrorBoundary from './components/common/ErrorBoundary.jsx';
+import PenCursor from './components/common/PenCursor.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { fetchQuizById } from './services/quizService.js';
 
@@ -216,6 +217,9 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-[#0f0e0d] text-[#e8e4dc] flex flex-col relative overflow-x-clip font-sans selection:bg-[#f5ba72]/30 selection:text-[#f5ba72]">
+      {/* Custom Pen Cursor for Laptop/Desktop only */}
+      <PenCursor />
+
       {/* Warm ambient gradients */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute -top-32 -left-32 w-[36rem] h-[36rem] bg-[#f5ba72]/[0.06] rounded-full blur-[140px]" />

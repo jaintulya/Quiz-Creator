@@ -593,3 +593,27 @@
   transform: translateZ(30px);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   CUSTOM PEN CURSOR (Laptop & Desktop Fine Pointer Only)
+───────────────────────────────────────────────────────────────────────────── */
+@keyframes ink-ripple {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+.animate-ink-ripple {
+  animation: ink-ripple 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  body.has-pen-cursor,
+  body.has-pen-cursor * {
+    cursor: none !important;
+  }
+}
+
