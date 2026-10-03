@@ -70,16 +70,14 @@ export default function QuizCard({
   const IconComponent = currentTheme.icon;
 
   return (
-    <div className="glass-card-hover p-6 sm:p-7 flex flex-col justify-between gap-5 relative group min-h-[200px] overflow-hidden rounded-2xl border border-white/10 hover:border-[#f5ba72]/45 transition-all duration-300">
-      {/* Steady ambient glow overlay that illuminates smoothly on hover */}
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#f5ba72]/[0.08] via-[#f5ba72]/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+    <div className="glass-card-hover p-6 sm:p-7 flex flex-col justify-between gap-5 relative group min-h-[200px] overflow-hidden rounded-2xl border border-white/[0.08] hover:border-white/20 transition-all duration-200">
       {/* Top Details */}
       <div>
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex items-start gap-3.5 min-w-0">
-            {/* Larger Colored Icon Tile with micro-scale on hover */}
-            <div className={`w-13 h-13 sm:w-14 sm:h-14 rounded-2xl ${currentTheme.iconBg} border ${currentTheme.iconBorder} flex items-center justify-center shrink-0 shadow-md group-hover:scale-110 group-hover:shadow-[0_0_18px_rgba(245,186,114,0.22)] transition-all duration-300`}>
-              <IconComponent className={`w-6 h-6 ${currentTheme.iconColor}`} />
+            {/* Clean Colored Icon Tile */}
+            <div className={`w-12 h-12 sm:w-13 sm:h-13 rounded-2xl ${currentTheme.iconBg} border ${currentTheme.iconBorder} flex items-center justify-center shrink-0 transition-colors duration-200`}>
+              <IconComponent className={`w-5 h-5 sm:w-6 sm:h-6 ${currentTheme.iconColor}`} />
             </div>
             <div className="min-w-0 pt-0.5">
               <div className="flex items-center gap-2">
@@ -140,7 +138,7 @@ export default function QuizCard({
       <div className="pt-3 border-t border-white/[0.08] flex items-center justify-between gap-3">
         <button
           onClick={() => onStart(quiz)}
-          className="btn-primary flex-1 py-2.5 px-4 text-xs sm:text-sm font-bold shadow-sm flex items-center justify-center gap-2 group-hover:shadow-caramel-glow transition-all duration-300"
+          className="btn-primary flex-1 py-2.5 px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2"
         >
           <Play className="w-4 h-4 fill-slate-950" />
           <span>Start Quiz</span>

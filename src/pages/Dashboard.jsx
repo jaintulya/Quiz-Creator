@@ -325,7 +325,7 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
               {recent.map((q) => (
                 <div
                   key={q.id}
-                  className="glass-card p-4 sm:p-5 border-white/10 hover:border-[#f5ba72]/30 transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:scale-[1.005]"
+                  className="glass-card p-4 sm:p-5 border-white/[0.08] hover:border-white/20 transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
                 >
                   <div className="space-y-1.5 min-w-0">
                     <div className="flex items-center gap-2">

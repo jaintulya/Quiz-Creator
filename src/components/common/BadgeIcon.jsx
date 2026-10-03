@@ -44,7 +44,7 @@ export default function BadgeIcon({ id, isUnlocked = false, level = 0, size = 'm
   if (currentLevel >= 3) {
     return (
       <div
-        className={`${sizeClasses} bg-gradient-to-br from-amber-500/25 to-yellow-500/10 border border-amber-400/40 text-amber-300 shadow-[0_0_12px_rgba(245,186,114,0.25)] flex items-center justify-center shrink-0 relative ${className}`}
+        className={`${sizeClasses} bg-gradient-to-br from-amber-500/20 to-yellow-500/10 border border-amber-400/35 text-amber-300 shadow-sm flex items-center justify-center shrink-0 relative ${className}`}
         title={`${meta.label} — Level 3 (Mastered)`}
       >
         <IconComponent className={iconSizes} />
@@ -59,7 +59,7 @@ export default function BadgeIcon({ id, isUnlocked = false, level = 0, size = 'm
   if (currentLevel === 2) {
     return (
       <div
-        className={`${sizeClasses} bg-gradient-to-br from-sky-400/20 to-indigo-500/10 border border-sky-400/30 text-sky-300 shadow-[0_0_8px_rgba(56,189,248,0.2)] flex items-center justify-center shrink-0 relative ${className}`}
+        className={`${sizeClasses} bg-gradient-to-br from-sky-400/20 to-indigo-500/10 border border-sky-400/30 text-sky-300 shadow-sm flex items-center justify-center shrink-0 relative ${className}`}
         title={`${meta.label} — Level 2`}
       >
         <IconComponent className={iconSizes} />

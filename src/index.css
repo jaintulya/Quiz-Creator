@@ -20,9 +20,8 @@
   --text-3: #5a5249;
   --radius: 14px;
   --radius-sm: 10px;
-  --radius-lg: 20px;
-  --glow-amber: 0 2px 10px -2px rgba(245,186,114,0.12);
-  --glow-amber-lg: 0 6px 18px -4px rgba(245,186,114,0.15);
+  --glow-amber: 0 2px 8px -2px rgba(0,0,0,0.5);
+  --glow-amber-lg: 0 4px 16px -4px rgba(0,0,0,0.6);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -282,15 +281,15 @@
     @apply glass-card;
     position: relative;
     overflow: hidden;
-    transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease;
+    transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
     cursor: pointer;
     transform: none !important;
   }
   .glass-card-hover:hover {
-    border-color: rgba(245, 186, 114, 0.4);
+    border-color: rgba(255, 255, 255, 0.16);
     transform: none !important;
-    background-color: rgba(22, 19, 16, 0.95);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 12px 35px -8px rgba(0, 0, 0, 0.7), 0 0 28px -4px rgba(245, 186, 114, 0.2);
+    background-color: rgba(20, 18, 15, 0.95);
+    box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
   }
 
   /* Premium stat card */
@@ -298,47 +297,25 @@
     @apply glass-card;
     position: relative;
     overflow: hidden;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
     transform: none !important;
   }
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 30% 20%, rgba(245,186,114,0.08) 0%, transparent 70%);
-    opacity: 0;
-    transition: opacity 0.35s ease;
-    pointer-events: none;
-  }
-  .stat-card:hover::before { opacity: 1; }
   .stat-card:hover {
-    border-color: rgba(245,186,114,0.35);
+    border-color: rgba(255, 255, 255, 0.14);
     transform: none !important;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 10px 30px -8px rgba(0,0,0,0.6), 0 0 22px -4px rgba(245,186,114,0.16);
+    box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.5);
   }
 
-  /* Feature card with 3D tilt */
+  /* Feature card */
   .feature-card {
     @apply glass-card;
     position: relative;
     overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.22,1,0.36,1);
-    transform-style: preserve-3d;
+    transition: all 0.25s ease;
   }
-  .feature-card::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(245,186,114,0.06) 0%, transparent 50%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    border-radius: inherit;
-  }
-  .feature-card:hover::after { opacity: 1; }
   .feature-card:hover {
-    border-color: rgba(245,186,114,0.22);
-    transform: translateY(-5px) rotateX(2deg);
-    box-shadow: 0 24px 60px -8px rgba(0,0,0,0.8), 0 0 50px -15px rgba(245,186,114,0.25);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.7);
   }
 
   .glass-panel {
@@ -357,30 +334,17 @@
     border-radius: var(--radius-sm);
     font-weight: 700;
     font-size: 0.875rem;
-    background: linear-gradient(135deg, #f5c842 0%, #f5a623 100%);
-    color: #1a0e00;
-    transition: all 0.2s cubic-bezier(0.22,1,0.36,1);
-    box-shadow: 0 2px 14px rgba(245,186,114,0.3), 0 1px 0 rgba(255,255,255,0.2) inset;
-    position: relative;
-    overflow: hidden;
+    background-color: #f5ba72;
+    color: #16110a;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   }
-  .btn-primary::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%);
-    background-size: 200% 100%;
-    background-position: -200% center;
-    transition: background-position 0.5s ease;
-    border-radius: inherit;
-  }
-  .btn-primary:hover:not(:disabled)::after { background-position: 200% center; }
   .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #ffd060 0%, #f5b235 100%);
-    box-shadow: 0 4px 24px rgba(245,186,114,0.45), 0 1px 0 rgba(255,255,255,0.25) inset;
+    background-color: #ffd699;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
     transform: translateY(-1px);
   }
-  .btn-primary:active:not(:disabled) { transform: scale(0.97) translateY(0); }
+  .btn-primary:active:not(:disabled) { transform: scale(0.98); }
   .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .btn-primary-lg {
