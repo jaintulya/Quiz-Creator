@@ -1,43 +1,11 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Brain, Sparkles, Zap, Target, Users, ArrowRight,
-  BookOpen, ChevronRight, CheckCircle2, RotateCw,
-  Play, Flame, Award, Check, X
+  ChevronRight, Award, Check, Play
 } from 'lucide-react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Landing3DScene from '../components/landing/Landing3DScene.jsx';
 import LiveQuizDemo from '../components/landing/LiveQuizDemo.jsx';
-
-gsap.registerPlugin(ScrollTrigger);
-
-/* ── Interactive Study Modes Data ── */
-const STUDY_MODES = [
-  {
-    id: 'classic',
-    title: 'Classic MCQ Mode',
-    badge: 'Comprehensive',
-    icon: BookOpen,
-    desc: 'Timed multiple choice questions with detailed line-by-line explanations, mistake tagging, and pace metrics.',
-    features: ['Instant answer analysis & explanations', 'Timer with pace calculator per question', 'Mistake bookmarking & re-attempts'],
-  },
-  {
-    id: 'survival',
-    title: 'Survival Challenge',
-    badge: 'High Stakes',
-    icon: Flame,
-    desc: '3 lives only! Each wrong answer costs a heart. Can you survive all questions and earn the Immortal badge?',
-    features: ['3 hearts survival bar with live tension', 'Real-time adrenaline test under pressure', 'Unlock exclusive Survival Champion badges'],
-  },
-  {
-    id: 'flashcards',
-    title: 'Flashcards Review',
-    badge: 'Spaced Repetition',
-    icon: RotateCw,
-    desc: 'Flip-to-reveal study cards for active recall. Perfect for quick exam revision and concept memorization.',
-    features: ['3D flip interaction with front/back cards', 'Self-assessment ratings for tricky concepts', 'Master key formulas and definitions fast'],
-  },
-];
+import StudyModesPreview from '../components/landing/StudyModesPreview.jsx';
 
 const FEATURES = [
   {
@@ -101,7 +69,6 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
   const demoSectionRef = useRef(null);
 
   const [showDemo, setShowDemo] = useState(false);
-  const [activeModeTab, setActiveModeTab] = useState('classic');
 
   const handleStart = () => {
     if (onNavigate) {
@@ -123,80 +90,11 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
     });
   };
 
-  useEffect(() => {
-    const root = containerRef.current;
-    if (!root) return;
-
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) return;
-
-    const ctx = gsap.context(() => {
-      // 1. Hero Content Entrance Stagger
-      gsap.fromTo(
-        '.gsap-hero-anim',
-        { y: 30, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.85,
-          stagger: 0.1,
-          ease: 'power3.out',
-        }
-      );
-
-      // 2. Feature Cards 3D Staggered Batch Reveal
-      ScrollTrigger.batch('.gsap-feature-card', {
-        onEnter: (batch) => {
-          gsap.fromTo(
-            batch,
-            { y: 40, opacity: 0, scale: 0.97 },
-            {
-              y: 0,
-              opacity: 1,
-              scale: 1,
-              duration: 0.65,
-              stagger: 0.1,
-              ease: 'power2.out',
-              overwrite: true,
-            }
-          );
-        },
-        start: 'top 85%',
-        once: true,
-      });
-
-      // 3. How It Works Steps Reveal
-      ScrollTrigger.batch('.gsap-step-card', {
-        onEnter: (batch) => {
-          gsap.fromTo(
-            batch,
-            { y: 35, opacity: 0 },
-            {
-              y: 0,
-              opacity: 1,
-              duration: 0.6,
-              stagger: 0.12,
-              ease: 'power2.out',
-              overwrite: true,
-            }
-          );
-        },
-        start: 'top 85%',
-        once: true,
-      });
-    }, root);
-
-    return () => ctx.revert();
-  }, []);
-
-  const currentMode = STUDY_MODES.find((m) => m.id === activeModeTab) || STUDY_MODES[0];
-  const ModeIcon = currentMode.icon;
-
   return (
     <div ref={containerRef} className="relative overflow-x-hidden bg-[#090807] text-[#f0ebe0]">
 
       {/* ── HERO SECTION WITH 3D WEBGL SCENE ── */}
-      <section className="gsap-hero-section relative min-h-[88vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16 lg:py-24 overflow-hidden">
+      <section className="relative min-h-[88vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16 lg:py-24 overflow-hidden">
 
         {/* Interactive Three.js 3D WebGL Canvas */}
         <Landing3DScene className="opacity-75" />
@@ -212,7 +110,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
           }}
         />
 
-        {/* Main Hero Container — Dynamically transitions between centered view & side-by-side demo view */}
+        {/* Main Hero Container */}
         <div
           ref={heroRef}
           className={`relative z-20 max-w-7xl mx-auto w-full transition-all duration-500 ${
@@ -222,7 +120,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
           }`}
         >
 
-          {/* Hero Copy & CTAs */}
+          {/* Hero Copy & CTAs — Uses smooth CSS stagger without JS flash */}
           <div
             className={`space-y-6 ${
               showDemo
@@ -232,7 +130,10 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
           >
 
             {/* Pill Tag — Perfectly centered with icon aligned */}
-            <div className="gsap-hero-anim flex items-center justify-center lg:justify-start">
+            <div
+              className="flex items-center justify-center lg:justify-start animate-slide-up"
+              style={{ animationDelay: '0.05s', animationFillMode: 'both' }}
+            >
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-[#f5ba72] text-xs font-semibold">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span>Interactive Quiz & Practice Platform</span>
@@ -240,7 +141,10 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
             </div>
 
             {/* Main Headline */}
-            <h1 className="gsap-hero-anim text-3xl sm:text-5xl lg:text-[3.5rem] font-black text-white tracking-tight leading-[1.12]">
+            <h1
+              className="text-3xl sm:text-5xl lg:text-[3.5rem] font-black text-white tracking-tight leading-[1.12] animate-slide-up"
+              style={{ animationDelay: '0.12s', animationFillMode: 'both' }}
+            >
               Study Faster.{' '}
               <br className="hidden sm:block" />
               Test Deeper.{' '}
@@ -248,16 +152,20 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
             </h1>
 
             {/* Subtext */}
-            <p className="gsap-hero-anim text-sm sm:text-base text-[#b5af9f] max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
+            <p
+              className="text-sm sm:text-base text-[#b5af9f] max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal animate-slide-up"
+              style={{ animationDelay: '0.18s', animationFillMode: 'both' }}
+            >
               Turn lectures and topics into active MCQ practice, survival trials, and flashcard decks.
               Get instant explanations, real-time pace metrics, and earn progressive mastery badges.
             </p>
 
             {/* CTA Button Row */}
             <div
-              className={`gsap-hero-anim flex flex-col sm:flex-row items-center gap-3.5 pt-2 ${
+              className={`flex flex-col sm:flex-row items-center gap-3.5 pt-2 animate-slide-up ${
                 showDemo ? 'justify-center lg:justify-start' : 'justify-center'
               }`}
+              style={{ animationDelay: '0.24s', animationFillMode: 'both' }}
             >
               <button
                 onClick={handleStart}
@@ -286,9 +194,10 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
 
             {/* Feature Checkpoints */}
             <div
-              className={`gsap-hero-anim flex flex-wrap items-center gap-x-5 gap-y-2 pt-1 text-xs text-[#8d877c] ${
+              className={`flex flex-wrap items-center gap-x-5 gap-y-2 pt-1 text-xs text-[#8d877c] animate-slide-up ${
                 showDemo ? 'justify-center lg:justify-start' : 'justify-center'
               }`}
+              style={{ animationDelay: '0.3s', animationFillMode: 'both' }}
             >
               <span className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Free Forever
@@ -339,13 +248,13 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
         </div>
       </div>
 
-      {/* ── THREE WAYS TO STUDY (Interactive Modes Showcase) ── */}
+      {/* ── THREE WAYS TO STUDY (With Live Playable Previews for All 3 Modes) ── */}
       <section className="py-20 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-12">
         <div className="text-center space-y-3.5 max-w-2xl mx-auto">
           {/* Centered pill with icon aligned */}
           <div className="flex items-center justify-center">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-[#f5ba72] text-[11px] font-bold uppercase tracking-wider">
-              <Flame className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>Three Ways To Study</span>
             </div>
           </div>
@@ -354,68 +263,12 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
             Tailored Modes for <span className="gradient-text">Every Learning Style</span>
           </h2>
           <p className="text-xs sm:text-sm text-[#8d877c] max-w-lg mx-auto">
-            Switch seamlessly between in-depth practice, high-intensity exam challenges, and rapid flashcard reviews.
+            Test and try all three modes right now below — Classic MCQ with pace stats, 3-heart Survival trials, and 3D flip flashcards!
           </p>
         </div>
 
-        {/* Mode Selector Tabs */}
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          {STUDY_MODES.map((mode) => {
-            const isTabActive = activeModeTab === mode.id;
-            const IconComp = mode.icon;
-            return (
-              <button
-                key={mode.id}
-                onClick={() => setActiveModeTab(mode.id)}
-                className={`px-4 sm:px-6 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2.5 transition-all duration-200 border ${
-                  isTabActive
-                    ? 'bg-[#1e1a15] border-amber-500/40 text-white shadow-lg'
-                    : 'bg-white/[0.02] border-white/[0.06] text-[#8d877c] hover:text-white hover:bg-white/[0.04]'
-                }`}
-              >
-                <IconComp className={`w-4 h-4 shrink-0 ${isTabActive ? 'text-amber-400' : 'text-[#8d877c]'}`} />
-                <span>{mode.title}</span>
-                <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                  isTabActive ? 'bg-amber-400/20 text-amber-300' : 'bg-white/5 text-[#6c665d]'
-                }`}>
-                  {mode.badge}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Selected Mode Showcase Card */}
-        <div className="glass-card p-6 sm:p-10 rounded-3xl border-white/10 max-w-4xl mx-auto bg-gradient-to-br from-[#161412] to-[#100f0e] shadow-2xl space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-                <ModeIcon className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-white">{currentMode.title}</h3>
-                <p className="text-xs text-[#8d877c] mt-0.5">{currentMode.desc}</p>
-              </div>
-            </div>
-
-            <button
-              onClick={handleStart}
-              className="btn-primary py-2 px-4 text-xs font-bold shrink-0 self-start sm:self-auto gap-1.5 shadow-caramel-glow"
-            >
-              <span>Play {currentMode.title}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-white/[0.07]">
-            {currentMode.features.map((feat, idx) => (
-              <div key={idx} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span className="text-xs text-[#dedbd3] font-medium">{feat}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Live Interactive Study Modes Showcase (With playable mini-previews) */}
+        <StudyModesPreview onStartMode={handleStart} />
       </section>
 
       {/* ── PLATFORM HIGHLIGHTS (Features Grid) ── */}
@@ -443,7 +296,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
             return (
               <div
                 key={f.title}
-                className="gsap-feature-card glass-card p-6 rounded-2xl border-white/[0.08] hover:border-amber-400/30 hover:bg-[#161412] transition-all duration-300 space-y-4 flex flex-col justify-between group"
+                className="glass-card p-6 rounded-2xl border-white/[0.08] hover:border-amber-400/30 hover:bg-[#161412] transition-all duration-300 space-y-4 flex flex-col justify-between group"
               >
                 <div className="space-y-3.5">
                   <div className="flex items-start justify-between">
@@ -468,7 +321,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
       </section>
 
       {/* ── HOW IT WORKS (Timeline) ── */}
-      <section className="gsap-steps-section py-20 sm:py-24 px-4 sm:px-6 lg:px-8 bg-[#0c0b0a] border-y border-white/[0.06]">
+      <section className="py-20 sm:py-24 px-4 sm:px-6 lg:px-8 bg-[#0c0b0a] border-y border-white/[0.06]">
         <div className="max-w-5xl mx-auto space-y-14">
           <div className="text-center space-y-3.5 max-w-md mx-auto">
             {/* Centered pill with icon aligned */}
@@ -490,7 +343,7 @@ export default function LandingPage({ onOpenAuth, onNavigate }) {
             {STEPS.map((s) => (
               <div
                 key={s.n}
-                className="gsap-step-card glass-card p-6 sm:p-7 rounded-2xl border-white/[0.08] hover:border-amber-400/25 flex flex-col items-center text-center gap-4 transition-all duration-300"
+                className="glass-card p-6 sm:p-7 rounded-2xl border-white/[0.08] hover:border-amber-400/25 flex flex-col items-center text-center gap-4 transition-all duration-300"
               >
                 <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 font-mono font-black text-xl shadow-sm">
                   {s.n}
