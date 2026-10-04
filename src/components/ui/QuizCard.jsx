@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, Layers, Brain, Play, Edit3, RefreshCw, Code, Trash2, Cloud, Copy, Check, RotateCw } from 'lucide-react';
+import { BookOpen, Layers, Brain, Play, Edit3, RefreshCw, Trash2, Cloud, Copy, Check, RotateCw } from 'lucide-react';
 
 export default function QuizCard({
   quiz,
@@ -7,7 +7,6 @@ export default function QuizCard({
   onStart,
   onEdit,
   onShuffle,
-  onViewJson,
   onDelete,
   onRegenerateCode,
   isShuffling = false,
@@ -164,13 +163,6 @@ export default function QuizCard({
             className="p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-[#a39e94] hover:text-white transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isShuffling ? 'animate-spin text-amber-400' : ''}`} />
-          </button>
-          <button
-            onClick={() => onViewJson(quiz)}
-            title="View Questions Content"
-            className="p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-[#a39e94] hover:text-white transition-colors"
-          >
-            <Code className="w-4 h-4" />
           </button>
           <button
             onClick={() => onDelete(quiz)}

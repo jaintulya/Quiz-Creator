@@ -252,7 +252,6 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
               onStart={onStartQuiz}
               onEdit={onEditQuiz}
               onShuffle={handleShuffle}
-              onViewJson={setViewJson}
               onDelete={setDeleteModal}
               onRegenerateCode={handleRegenerateCode}
               isShuffling={shufflingId === quiz.id}
