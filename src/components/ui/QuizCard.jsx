@@ -10,6 +10,7 @@ export default function QuizCard({
   onViewJson,
   onDelete,
   onRegenerateCode,
+  isShuffling = false,
 }) {
   const [copied, setCopied] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -153,11 +154,16 @@ export default function QuizCard({
             <Edit3 className="w-4 h-4" />
           </button>
           <button
-            onClick={() => onShuffle(quiz.id)}
+            id={`shuffle-btn-${quiz.id}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onShuffle(quiz);
+            }}
+            disabled={isShuffling}
             title="Shuffle Questions"
-            className="p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-[#a39e94] hover:text-white transition-colors"
+            className="p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-[#a39e94] hover:text-white transition-colors disabled:opacity-50"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-4 h-4 ${isShuffling ? 'animate-spin text-amber-400' : ''}`} />
           </button>
           <button
             onClick={() => onViewJson(quiz)}

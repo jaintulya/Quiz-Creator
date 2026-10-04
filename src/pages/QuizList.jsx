@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   BookOpen, Layers, Clock, Flame, Search, ChevronDown,
-  Sparkles, Code, Check, Copy, RefreshCw, X, AlertTriangle, Plus
+  Sparkles, Code, Check, Copy, RefreshCw, X, AlertTriangle, Plus, Shuffle
 } from 'lucide-react';
 import StatCard from '../components/ui/StatCard.jsx';
 import QuizCard from '../components/ui/QuizCard.jsx';
@@ -17,6 +17,17 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
   const [deleteModal, setDeleteModal] = useState(null);
   const [viewJson, setViewJson] = useState(null);
   const [copiedJson, setCopiedJson] = useState(false);
+  const [shufflingId, setShufflingId] = useState(null);
+  const [shufflePopup, setShufflePopup] = useState(null);
+
+  // Auto-dismiss shuffle success popup after 3.5 seconds
+  useEffect(() => {
+    if (!shufflePopup) return;
+    const timer = setTimeout(() => {
+      setShufflePopup(null);
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, [shufflePopup]);
 
   // Load quizzes from Supabase (or local fallback)
   const loadQuizzes = async () => {
@@ -73,22 +84,45 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
     }
   };
 
-  const handleShuffle = async (quizId) => {
-    const quiz = quizzes.find((q) => q.id === quizId);
-    if (!quiz) return;
+  const handleShuffle = async (quizOrId) => {
+    const quiz = (typeof quizOrId === 'object' && quizOrId !== null)
+      ? quizOrId
+      : quizzes.find((q) => q.id === quizOrId || q.code === quizOrId);
 
-    const shuffledQuestions = [...quiz.questions]
-      .map((q) => ({
-        ...q,
-        options: [...q.options].sort(() => Math.random() - 0.5),
-      }))
-      .sort(() => Math.random() - 0.5);
+    if (!quiz || !quiz.questions || quiz.questions.length === 0) return;
 
-    await updateExistingQuiz(quiz.id, quiz.title, shuffledQuestions, user?.id);
-    await loadQuizzes();
+    const quizId = quiz.id;
+    setShufflingId(quizId);
+
+    // Fisher-Yates shuffle ONLY the order of questions (preserve options intact)
+    const shuffledQuestions = [...quiz.questions];
+    for (let i = shuffledQuestions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledQuestions[i], shuffledQuestions[j]] = [shuffledQuestions[j], shuffledQuestions[i]];
+    }
+
+    // Update in-place statically — page remains static with NO full-page reload or spinner
+    setQuizzes((prev) =>
+      prev.map((q) => (q.id === quizId ? { ...q, questions: shuffledQuestions } : q))
+    );
 
     if (viewJson && viewJson.id === quizId) {
-      setViewJson({ ...quiz, questions: shuffledQuestions });
+      setViewJson((prev) => (prev ? { ...prev, questions: shuffledQuestions } : null));
+    }
+
+    // Show shuffle confirmation popup
+    setShufflePopup({
+      title: quiz.title,
+      count: shuffledQuestions.length,
+    });
+
+    try {
+      // Persist shuffled questions in the background without clearing/reloading the page state
+      await updateExistingQuiz(quiz.id, quiz.title, shuffledQuestions, user?.id);
+    } catch (err) {
+      console.error('Failed to save shuffled questions:', err);
+    } finally {
+      setShufflingId(null);
     }
   };
 
@@ -221,6 +255,7 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
               onViewJson={setViewJson}
               onDelete={setDeleteModal}
               onRegenerateCode={handleRegenerateCode}
+              isShuffling={shufflingId === quiz.id}
             />
           ))}
         </div>
@@ -333,6 +368,48 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
                 className="btn-danger flex-1 py-2.5 text-sm"
               >
                 Delete Quiz
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 7. Shuffle Questions Success Popup ─────────────────────────── */}
+      {shufflePopup && (
+        <div
+          className="fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShufflePopup(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-[#161412] border border-[#f5ba72]/40 rounded-2xl p-6 shadow-2xl animate-slide-up text-center space-y-4 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShufflePopup(null)}
+              className="absolute top-4 right-4 text-[#8d877c] hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto text-[#f5ba72] shadow-caramel-glow">
+              <Shuffle className="w-7 h-7 text-[#f5ba72]" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-bold text-white">Questions Shuffled!</h3>
+              <p className="text-xs text-[#a39e94] leading-relaxed">
+                All <span className="text-[#f5ba72] font-semibold">{shufflePopup.count} questions</span> in{' '}
+                <span className="text-white font-medium">"{shufflePopup.title}"</span> have been reordered.
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => setShufflePopup(null)}
+                className="btn-primary w-full py-2.5 text-xs font-bold"
+              >
+                Got it
               </button>
             </div>
           </div>

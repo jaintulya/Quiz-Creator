@@ -26,14 +26,28 @@ export default function QuizPlayer({ quiz, initialMode = null, onFinish, onBack 
   const { user } = useAuth();
   const total = quiz.questions.length;
 
-  // Shuffle options on first render
+  // Shuffle ONLY options on quiz start (Question order remains exact as created!)
   const [shuffledQuestions] = useState(() =>
     quiz.questions.map((q) => {
-      // Find correct answer text
-      const correctText = typeof q.correctAnswer === 'number' 
-        ? q.options[q.correctAnswer] 
-        : q.correctAnswer;
+      // Find correct answer text robustly
+      let correctText = '';
+      if (typeof q.correctAnswer === 'number' && q.options[q.correctAnswer] !== undefined) {
+        correctText = q.options[q.correctAnswer];
+      } else if (typeof q.correctAnswer === 'string' && q.correctAnswer.trim()) {
+        correctText = q.correctAnswer.trim();
+      } else if (typeof q.correct === 'number' && q.options[q.correct] !== undefined) {
+        correctText = q.options[q.correct];
+      } else if (typeof q.correct === 'string' && q.correct.trim()) {
+        correctText = q.correct.trim();
+      } else if (typeof q.answer === 'number' && q.options[q.answer] !== undefined) {
+        correctText = q.options[q.answer];
+      } else if (typeof q.answer === 'string' && q.answer.trim()) {
+        correctText = q.answer.trim();
+      } else {
+        correctText = q.options[0] || '';
+      }
 
+      // Shuffle ONLY the options (A, B, C, D)
       const shuffled = shuffleArray(q.options);
       const newCorrectIdx = shuffled.indexOf(correctText);
 
