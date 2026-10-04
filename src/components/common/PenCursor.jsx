@@ -45,9 +45,8 @@ export default function PenCursor() {
 
     // 3. 60/120fps Hardware-accelerated cursor tracking
     const onMouseMove = (e) => {
-      if (!visible) setVisible(true);
-
       if (cursorRef.current) {
+        cursorRef.current.style.opacity = '1';
         cursorRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
       }
 
@@ -74,11 +73,11 @@ export default function PenCursor() {
     };
 
     const onMouseEnter = () => {
-      setVisible(true);
+      if (cursorRef.current) cursorRef.current.style.opacity = '1';
     };
 
     const onMouseLeave = () => {
-      setVisible(false);
+      if (cursorRef.current) cursorRef.current.style.opacity = '0';
     };
 
     window.addEventListener('mousemove', onMouseMove, { passive: true });
@@ -136,61 +135,69 @@ export default function PenCursor() {
               : 'rotate-0 scale-100'
           }`}
         >
-          {/* Beautiful Crafted SVG Pen Pointer */}
+          {/* Precision Slim Stylus/Pen Pointer (Uniform slim width from front to back, tapered tip) */}
           <svg
-            width="28"
-            height="28"
-            viewBox="0 0 28 28"
+            width="26"
+            height="26"
+            viewBox="0 0 26 26"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            className="filter drop-shadow-[1px_2px_3px_rgba(0,0,0,0.5)]"
+            className="filter drop-shadow-[1px_2px_3px_rgba(0,0,0,0.55)]"
           >
-            {/* Nib (Tip touches 0, 0 perfectly) */}
+            {/* Pointer Nib Cone (Tip touches 0, 0 exactly) */}
             <path
-              d="M0 0 L2.8 7.5 L7.5 2.8 Z"
+              d="M0 0 L2.0 5.2 L5.2 2.0 Z"
               fill={isHovering ? '#ffe3b3' : '#ffd699'}
               stroke="#b45309"
               strokeWidth="0.5"
             />
             {/* Ink Slit & Breather Hole */}
-            <line x1="0" y1="0" x2="3.4" y2="3.4" stroke="#451a03" strokeWidth="0.6" />
-            <circle cx="3.4" cy="3.4" r="0.65" fill="#451a03" />
+            <line x1="0" y1="0" x2="2.2" y2="2.2" stroke="#451a03" strokeWidth="0.5" />
+            <circle cx="2.2" cy="2.2" r="0.55" fill="#451a03" />
 
-            {/* Grip Collar / Metallic Ring */}
+            {/* Grip Collar / Metallic Transition Ring (Same slim width: ~4.5px) */}
             <path
-              d="M2.8 7.5 L7.5 2.8 L10.5 5.8 L5.8 10.5 Z"
+              d="M2.0 5.2 L3.2 6.4 L6.4 3.2 L5.2 2.0 Z"
               fill="#f5ba72"
               stroke="#d97706"
               strokeWidth="0.4"
             />
 
-            {/* Pen Barrel */}
+            {/* Pen Barrel (Uniform slim width all the way to the back) */}
             <path
-              d="M5.8 10.5 L10.5 5.8 L22 17.3 C23.6 18.9 23.6 21.5 22 23.1 C20.4 24.7 17.8 24.7 16.2 23.1 L5.8 10.5 Z"
+              d="M3.2 6.4 L15.9 19.1 L19.1 15.9 L6.4 3.2 Z"
               fill="#181512"
               stroke="#f5ba72"
-              strokeWidth="0.7"
+              strokeWidth="0.6"
             />
 
-            {/* Golden Clip / Stripe */}
+            {/* Slim End Cap (Matches the exact same slim width at the back) */}
+            <path
+              d="M15.9 19.1 L17.2 20.4 C18.1 21.3 19.7 19.7 20.4 17.2 L19.1 15.9 Z"
+              fill="#f5ba72"
+              stroke="#d97706"
+              strokeWidth="0.4"
+            />
+
+            {/* Golden Clip / Stripe along the barrel */}
             <line
-              x1="8"
-              y1="8"
-              x2="20.5"
-              y2="20.5"
+              x1="5.0"
+              y1="6.8"
+              x2="15.5"
+              y2="17.3"
               stroke="#ffd699"
-              strokeWidth="0.9"
+              strokeWidth="0.75"
               strokeLinecap="round"
             />
 
-            {/* Subtle Metallic Highlight along Barrel */}
+            {/* Subtle Metallic Specular Highlight */}
             <line
-              x1="9"
-              y1="6.5"
-              x2="19.5"
-              y2="17"
+              x1="5.6"
+              y1="5.0"
+              x2="17.2"
+              y2="16.6"
               stroke="rgba(255,255,255,0.4)"
-              strokeWidth="0.6"
+              strokeWidth="0.5"
               strokeLinecap="round"
             />
           </svg>
