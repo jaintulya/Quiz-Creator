@@ -270,7 +270,7 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
                 Quiz Questions & Answers
               </label>
               <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                Plain Text Format
+                Standard Format
               </span>
             </div>
             <p className="text-[11px] text-[#8d877c] mt-0.5">
