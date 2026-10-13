@@ -323,7 +323,7 @@ export function parsePlainTextQuestions(text) {
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i].trim();
-    if (!rawLine) continue;
+    if (!rawLine || rawLine.startsWith('```')) continue;
     const qMatch = rawLine.match(qStartRegex);
     if (qMatch) {
       commitCurrent();
