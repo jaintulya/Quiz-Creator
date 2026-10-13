@@ -9,6 +9,25 @@ import { validateQuizJSON } from '../utils/storage.js';
 import { recordQuizCreated } from '../services/gamificationService.js';
 import AIPromptModal from '../components/quiz/AIPromptModal.jsx';
 
+function formatQuestionsAsPlainText(questions) {
+  if (!Array.isArray(questions) || questions.length === 0) return '';
+  const letters = ['A', 'B', 'C', 'D'];
+  return questions.map((q, idx) => {
+    const opts = (q.options || []).map((opt, i) => `${letters[i] || '•'}) ${opt}`).join('\n');
+    let ansLetter = 'A';
+    if (typeof q.correctAnswer === 'number' && letters[q.correctAnswer]) {
+      ansLetter = letters[q.correctAnswer];
+    } else if (typeof q.correctAnswer === 'string' && q.options) {
+      const foundIdx = q.options.indexOf(q.correctAnswer);
+      if (foundIdx >= 0) ansLetter = letters[foundIdx];
+    } else if (typeof q.correct === 'number' && letters[q.correct]) {
+      ansLetter = letters[q.correct];
+    }
+    const exp = q.explanation ? `\nExplanation: ${q.explanation}` : '';
+    return `${idx + 1}. ${q.question}\n${opts}\nAnswer: ${ansLetter}${exp}`;
+  }).join('\n\n');
+}
+
 export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) {
   const { user, isGuest } = useAuth();
 
@@ -18,8 +37,8 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
   const [category, setCategory] = useState(editQuiz?.category || 'General');
   const [questions, setQuestions] = useState(editQuiz?.questions || []);
 
-  // Questions JSON Editor State
-  const [jsonText, setJsonText] = useState(editQuiz ? JSON.stringify(editQuiz.questions, null, 2) : '');
+  // Questions Payload Editor State
+  const [jsonText, setJsonText] = useState(editQuiz?.questions ? formatQuestionsAsPlainText(editQuiz.questions) : '');
 
   // Status
   const [error, setError] = useState('');
@@ -35,7 +54,7 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
       setDescription(editQuiz.description || '');
       setCategory(editQuiz.category || 'General');
       setQuestions(editQuiz.questions || []);
-      setJsonText(editQuiz.questions ? JSON.stringify(editQuiz.questions, null, 2) : '');
+      setJsonText(editQuiz.questions ? formatQuestionsAsPlainText(editQuiz.questions) : '');
       setShowPreview(true);
     } else {
       setTitle('');
@@ -246,11 +265,16 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
       <div className="glass-card p-5 sm:p-7 border-white/10 space-y-4 animate-fade-in">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <label className="text-xs font-bold text-white uppercase tracking-wider block">
-              Quiz Questions & Answers
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-white uppercase tracking-wider block">
+                Quiz Questions & Answers
+              </label>
+              <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                Plain Text Format
+              </span>
+            </div>
             <p className="text-[11px] text-[#8d877c] mt-0.5">
-              Enter or paste your multiple-choice questions below with their options and correct answers.
+              Paste your questions in standard format (1. Question ... A) B) C) D) ... Answer: C ... Explanation: ...)
             </p>
           </div>
 
@@ -265,20 +289,20 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
         </div>
 
         <textarea
-          rows={10}
+          rows={11}
           value={jsonText}
           onChange={(e) => {
             setJsonText(e.target.value);
             if (error) setError('');
           }}
-          placeholder={`[\n  {\n    "question": "Which component is recommended in React Native for handling tap interactions?",\n    "options": ["TouchableHighlight", "View", "Pressable", "TouchableOpacity"],\n    "correctAnswer": "Pressable",\n    "explanation": "Pressable provides extensive touch feedback."\n  }\n]`}
-          className="input-field text-xs font-mono p-4 w-full resize-y"
+          placeholder={`1. Which component is recommended in React Native for handling tap interactions?\nA) TouchableHighlight\nB) View\nC) Pressable\nD) TouchableOpacity\nAnswer: C\nExplanation: Pressable provides extensive touch feedback and ripple effects.\n\n2. What is the output of typeof null in JavaScript?\nA) "null"\nB) "undefined"\nC) "object"\nD) "number"\nAnswer: C\nExplanation: In JavaScript, typeof null returns "object" due to a historical bug.`}
+          className="input-field text-xs font-mono p-4 w-full resize-y leading-relaxed"
         />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
           <span className="text-[11px] text-[#8d877c] flex items-center gap-1.5 flex-wrap">
             <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span>Need questions? Click <button type="button" onClick={() => setShowPromptModal(true)} className="text-[#f5ba72] underline font-semibold hover:text-[#f7cb93]">"Get AI Prompt"</button> to generate with ChatGPT/Gemini.</span>
+            <span>Need questions? Click <button type="button" onClick={() => setShowPromptModal(true)} className="text-[#f5ba72] underline font-semibold hover:text-[#f7cb93]">"Get AI Prompt"</button> to generate with ChatGPT, Claude, or Gemini.</span>
           </span>
 
           <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
@@ -413,7 +437,8 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
       {/* AI Prompt Generator Modal */}
       {showPromptModal && (
         <AIPromptModal
-          defaultTopic={title}
+          defaultTopic=""
+          quizTitle={title}
           onClose={() => setShowPromptModal(false)}
         />
       )}
