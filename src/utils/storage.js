@@ -301,3 +301,47 @@ export function repairAndParseJSON(rawStr) {
   }
   return questions.length > 0 ? questions : null;
 }
+
+// ─── Plain Text (Natural Q&A) Question Parser ──────────────────────────────
+export function parsePlainTextQuestions(text) {
+  if (!text || typeof text !== 'string') return [];
+  const lines = text.split(/\r?\n/);
+  const questions = [];
+  let currentQ = null;
+
+  function commitCurrent() {
+    if (currentQ && currentQ.question && currentQ.options.length >= 2) {
+      questions.push({ ...currentQ });
+    }
+    currentQ = null;
+  }
+
+  const qStartRegex = /^(?:(?:\d+[\.\)]|Q(?:uestion)?\s*\d+[\.\:\)]|\#+\s*\d+[\.\)])\s*)(.+)$/i;
+  const optRegex = /^(?:\(?\s*([A-Fa-f\d])\s*[\.\)\:\-]\s*|\(\s*([A-Fa-f])\s*\)\s*)(.+)$/;
+  const ansRegex = /^(?:(?:Correct\s*)?Ans(?:wer)?|Key)[\s\:\-]+([A-Za-z\d]|\S.+)$/i;
+  const expRegex = /^(?:Explanation|Reason|Note)[\s\:\-]+(.+)$/i;
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i].trim();
+    if (!rawLine) continue;
+    const qMatch = rawLine.match(qStartRegex);
+    if (qMatch) {
+      commitCurrent();
+      currentQ = { question: qMatch[1].trim(), options: [], correctAnswer: 0, explanation: '' };
+      continue;
+    }
+    if (!currentQ) continue;
+    const optMatch = rawLine.match(optRegex);
+    if (optMatch) {
+      const optText = (optMatch[3] || '').trim();
+      if (optText) currentQ.options.push(optText);
+      continue;
+    }
+    const ansMatch = rawLine.match(ansRegex);
+    if (ansMatch) { currentQ.rawAnswer = ansMatch[1].trim(); continue; }
+    const expMatch = rawLine.match(expRegex);
+    if (expMatch) { currentQ.explanation = expMatch[1].trim(); continue; }
+  }
+  commitCurrent();
+  return questions;
+}
