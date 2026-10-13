@@ -338,7 +338,17 @@ export function parsePlainTextQuestions(text) {
       continue;
     }
     const ansMatch = rawLine.match(ansRegex);
-    if (ansMatch) { currentQ.rawAnswer = ansMatch[1].trim(); continue; }
+    if (ansMatch) {
+      const ansVal = ansMatch[1].trim();
+      const letterIdx = ['a', 'b', 'c', 'd', 'e', 'f'].indexOf(ansVal.charAt(0).toLowerCase());
+      if (letterIdx !== -1) currentQ.correctAnswer = letterIdx;
+      else {
+        const matchIdx = currentQ.options.findIndex((o) => o.toLowerCase() === ansVal.toLowerCase());
+        if (matchIdx !== -1) currentQ.correctAnswer = matchIdx;
+      }
+      currentQ.rawAnswer = ansVal;
+      continue;
+    }
     const expMatch = rawLine.match(expRegex);
     if (expMatch) { currentQ.explanation = expMatch[1].trim(); continue; }
   }
