@@ -267,3 +267,37 @@ export function validateQuizJSON(jsonString, fallbackTitle = '') {
     return { valid: false, error: 'Invalid question format. Please check for missing brackets, commas, or quotes.' };
   }
 }
+// ─── Auto-Repairing JSON Parser (Handles Truncation & Code Brackets) ──────────
+export function repairAndParseJSON(rawStr) {
+  if (!rawStr || typeof rawStr !== 'string') return null;
+  let text = rawStr.trim();
+  text = text.replace(/^\`\`\`[a-zA-Z]*\r?\n/m, '').replace(/\`\`\`\s*$/m, '').trim();
+  try {
+    const direct = JSON.parse(text);
+    if (direct) return direct;
+  } catch {}
+  const questions = [];
+  let inString = false, escape = false, depth = 0, startIdx = -1;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (escape) { escape = false; continue; }
+    if (char === '\\') { escape = true; continue; }
+    if (char === '"') { inString = !inString; continue; }
+    if (!inString) {
+      if (char === '{') { if (depth === 0) startIdx = i; depth++; }
+      else if (char === '}') {
+        depth--;
+        if (depth === 0 && startIdx !== -1) {
+          let objStr = text.substring(startIdx, i + 1);
+          objStr = objStr.replace(/\\([^"\\\/bfnrtu])/g, '$1').replace(/,\s*([\]}])/g, '$1');
+          try {
+            const obj = JSON.parse(objStr);
+            if (obj && (obj.question || obj.title || obj.prompt || obj.text)) questions.push(obj);
+          } catch {}
+          startIdx = -1;
+        }
+      }
+    }
+  }
+  return questions.length > 0 ? questions : null;
+}
