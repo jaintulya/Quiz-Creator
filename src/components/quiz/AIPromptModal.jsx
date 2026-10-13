@@ -4,8 +4,8 @@ import { buildAIPrompt } from '../../utils/aiPrompt.js';
 
 export default function AIPromptModal({ onClose, defaultTopic = '', quizTitle = '' }) {
   const [topic, setTopic] = useState(defaultTopic);
-  const [count, setCount] = useState(5);
-  const [difficulty, setDifficulty] = useState('Medium');
+  const [count, setCount] = useState('');
+  const [difficulty, setDifficulty] = useState('');
   const [copied, setCopied] = useState(false);
 
   // Check if user has made any customization away from initial empty defaults
