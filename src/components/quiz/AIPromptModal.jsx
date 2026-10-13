@@ -2,24 +2,26 @@ import { useState, useMemo } from 'react';
 import { X, Copy, Check, Sparkles, Bot, ArrowRight, Lightbulb, RotateCcw } from 'lucide-react';
 import { buildAIPrompt } from '../../utils/aiPrompt.js';
 
-export default function AIPromptModal({ onClose, defaultTopic = '' }) {
+export default function AIPromptModal({ onClose, defaultTopic = '', quizTitle = '' }) {
   const [topic, setTopic] = useState(defaultTopic);
   const [count, setCount] = useState(5);
   const [difficulty, setDifficulty] = useState('Medium');
   const [copied, setCopied] = useState(false);
 
-  // Check if user has made any customization away from initial defaults
-  const isCustomized = Boolean(topic.trim()) || difficulty !== 'Medium' || count !== 5;
+  // Check if user has made any customization away from initial empty defaults
+  const isCustomized = Boolean(topic.trim()) || Boolean(difficulty) || Boolean(count);
 
   const handleClearCustomization = () => {
     setTopic('');
-    setDifficulty('Medium');
-    setCount(5);
+    setDifficulty('');
+    setCount('');
   };
 
+  const parsedCount = typeof count === 'number' ? count : (parseInt(count, 10) || null);
+
   const promptText = useMemo(() => {
-    return buildAIPrompt(topic, count, difficulty);
-  }, [topic, count, difficulty]);
+    return buildAIPrompt(topic, parsedCount, difficulty);
+  }, [topic, parsedCount, difficulty]);
 
   const handleCopy = async () => {
     try {
@@ -61,7 +63,7 @@ export default function AIPromptModal({ onClose, defaultTopic = '' }) {
                 </span>
               </div>
               <p className="text-xs text-[#a39e94]">
-                Get the exact prompt to feed into ChatGPT, Gemini, or Claude for ready-to-import JSON.
+                Get the exact prompt to feed into ChatGPT, Gemini, or Claude for ready-to-import questions.
               </p>
             </div>
           </div>
@@ -76,12 +78,12 @@ export default function AIPromptModal({ onClose, defaultTopic = '' }) {
         {/* Content Body */}
         <div className="p-4 sm:p-6 space-y-4">
 
-          {/* 1. Customization Controls Container */}
+          {/* 1. Normal, Clean Customization Controls Container */}
           <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] shadow-inner space-y-3.5">
             <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#f5ba72] flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#f5ba72]" />
-                Customize Your Prompt
+                Customize Prompt
               </span>
 
               <div className="flex items-center gap-2">
@@ -108,7 +110,8 @@ export default function AIPromptModal({ onClose, defaultTopic = '' }) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-              <div className="sm:col-span-6">
+              {/* 1. Quiz Topic / Notes Input */}
+              <div className="sm:col-span-5">
                 <label className="text-xs font-semibold text-[#a39e94] block mb-1">
                   Quiz Topic / Notes (Optional)
                 </label>
@@ -116,11 +119,21 @@ export default function AIPromptModal({ onClose, defaultTopic = '' }) {
                   type="text"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  placeholder="e.g. Modern Physics, Python OOP, World History..."
+                  placeholder="e.g. React Native, Operating Systems, Physics..."
                   className="input-field text-xs sm:text-sm py-2 px-3 w-full"
                 />
+                {quizTitle && quizTitle.trim() && !topic && (
+                  <button
+                    type="button"
+                    onClick={() => setTopic(quizTitle.trim())}
+                    className="text-[11px] text-[#f5ba72] hover:underline flex items-center gap-1 mt-1 font-medium transition-colors"
+                  >
+                    <span>Use quiz title: "{quizTitle.length > 32 ? quizTitle.slice(0, 30) + '...' : quizTitle}"</span>
+                  </button>
+                )}
               </div>
 
+              {/* 2. Difficulty Select */}
               <div className="sm:col-span-3">
                 <label className="text-xs font-semibold text-[#a39e94] block mb-1">
                   Difficulty Level
@@ -130,6 +143,7 @@ export default function AIPromptModal({ onClose, defaultTopic = '' }) {
                   onChange={(e) => setDifficulty(e.target.value)}
                   className="input-field text-xs sm:text-sm py-2 px-3 w-full appearance-none cursor-pointer"
                 >
+                  <option value="" className="bg-[#1b1713] text-[#8d877c]">Select (Optional)</option>
                   <option value="Easy" className="bg-[#1b1713] text-white">Easy</option>
                   <option value="Medium" className="bg-[#1b1713] text-white">Medium</option>
                   <option value="Hard" className="bg-[#1b1713] text-white">Hard</option>
@@ -137,36 +151,77 @@ export default function AIPromptModal({ onClose, defaultTopic = '' }) {
                 </select>
               </div>
 
-              <div className="sm:col-span-3">
-                <label className="text-xs font-semibold text-[#a39e94] block mb-1">
-                  Question Count
-                </label>
-                <select
-                  value={count}
-                  onChange={(e) => setCount(Number(e.target.value))}
-                  className="input-field text-xs sm:text-sm py-2 px-3 w-full appearance-none cursor-pointer"
-                >
-                  <option value={3} className="bg-[#1b1713] text-white">3 Questions</option>
-                  <option value={5} className="bg-[#1b1713] text-white">5 Questions</option>
-                  <option value={10} className="bg-[#1b1713] text-white">10 Questions</option>
-                  <option value={15} className="bg-[#1b1713] text-white">15 Questions</option>
-                  <option value={20} className="bg-[#1b1713] text-white">20 Questions</option>
-                  <option value={25} className="bg-[#1b1713] text-white">25 Questions</option>
-                  <option value={30} className="bg-[#1b1713] text-white">30 Questions</option>
-                </select>
+              {/* 3. Question Count Input & Quick Presets */}
+              <div className="sm:col-span-4">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-[#a39e94] block">
+                    Question Count
+                  </label>
+                  <span className="text-[10px] text-[#716b60]">max 50</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={count}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setCount('');
+                      } else {
+                        const num = parseInt(val, 10);
+                        if (!isNaN(num)) {
+                          setCount(Math.max(1, Math.min(50, num)));
+                        }
+                      }
+                    }}
+                    placeholder="e.g. 10"
+                    className="input-field text-xs sm:text-sm py-2 px-3 w-full pr-9 font-semibold font-mono"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#8d877c] pointer-events-none">
+                    Qs
+                  </span>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5 mt-2">
+                  {[5, 10, 20, 30, 50].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setCount(count === preset ? '' : preset)}
+                      className={`text-[11px] py-1 px-1 rounded-lg font-semibold text-center transition-all duration-150 ${
+                        count === preset
+                          ? 'bg-gradient-to-b from-[#f5ba72]/25 to-[#f5ba72]/10 text-[#f5ba72] border border-[#f5ba72]/50 shadow-[0_0_8px_rgba(245,186,114,0.15)]'
+                          : 'bg-white/[0.03] text-[#8d877c] border border-white/[0.06] hover:bg-white/[0.07] hover:text-white hover:border-white/[0.12]'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
+
+            {/* Smart tip for large counts (30 or 50 questions) */}
+            {parsedCount && parsedCount > 20 && (
+              <div className="text-[11px] text-[#dedbd3] bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg flex items-start gap-2">
+                <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Tip for {parsedCount} questions:</strong> If the AI pauses mid-way due to message length limits, simply type <em>"continue"</em> in your chat and copy all parts here.
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Quick steps banner */}
           <div className="p-3 rounded-xl bg-[#241e16] border border-caramel-500/20 flex items-start gap-2.5 text-xs text-[#dedbd3]">
             <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              <strong className="text-white">How it works:</strong> Copy the prompt below <ArrowRight className="inline w-3 h-3 text-[#f5ba72]" /> Paste it into ChatGPT / Gemini / Claude <ArrowRight className="inline w-3 h-3 text-[#f5ba72]" /> Copy the returned JSON directly into QuizCraft.
+              <strong className="text-white">How it works:</strong> Copy the prompt below <ArrowRight className="inline w-3 h-3 text-[#f5ba72]" /> Paste it into ChatGPT / Gemini / Claude <ArrowRight className="inline w-3 h-3 text-[#f5ba72]" /> Copy the returned questions directly back into QuizCraft.
             </div>
           </div>
 
-          {/* 2. Prompt Preview Code Box (Dynamically shows Default Prompt / Custom Prompt) */}
+          {/* 2. Prompt Preview Code Box */}
           <div className="relative">
             <div className="flex items-center justify-between pb-2">
               <div className="flex items-center gap-2">
@@ -179,7 +234,8 @@ export default function AIPromptModal({ onClose, defaultTopic = '' }) {
                     ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
                     : 'bg-white/5 text-[#a39e94] border-white/10'
                 }`}>
-                  {isCustomized ? 'Customized' : 'Default'}
+                  {parsedCount ? `${parsedCount} Questions` : 'All Questions'}
+                  {difficulty ? ` • ${difficulty}` : ''}
                 </span>
               </div>
 
@@ -193,7 +249,7 @@ export default function AIPromptModal({ onClose, defaultTopic = '' }) {
               </button>
             </div>
 
-            <pre className="w-full h-44 sm:h-52 overflow-y-auto p-3.5 rounded-xl bg-[#0d0c0b] border border-white/10 text-[#dedbd3] text-xs leading-relaxed whitespace-pre-wrap font-mono select-all">
+            <pre className="w-full h-48 sm:h-56 overflow-y-auto p-3.5 rounded-xl bg-[#0d0c0b] border border-white/10 text-[#dedbd3] text-xs leading-relaxed whitespace-pre-wrap font-mono select-all">
               {promptText}
             </pre>
           </div>
@@ -202,7 +258,7 @@ export default function AIPromptModal({ onClose, defaultTopic = '' }) {
         {/* Footer */}
         <div className="p-4 sm:p-5 border-t border-white/10 bg-[#161412] flex flex-col sm:flex-row items-center justify-between gap-3">
           <span className="text-xs text-[#8d877c] text-center sm:text-left">
-            Ready to generate quiz questions in 1-click.
+            Ready to generate {parsedCount ? `${parsedCount} ` : ''}quiz questions with AI.
           </span>
           <button
             type="button"
