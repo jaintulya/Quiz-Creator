@@ -63,7 +63,7 @@ export function getQuizById(id, userId = null) {
 }
 
 // ─── Save a new quiz ───────────────────────────────────────────────────────────
-export function saveQuiz(title, questions, userId = null) {
+export function saveQuiz(title, questions, userId = null, category = 'General', description = '') {
   const key = getStorageKey(userId);
   const quizzes = getAllQuizzes(userId);
   const code = generateQuizCode();
@@ -71,11 +71,13 @@ export function saveQuiz(title, questions, userId = null) {
     id: code,
     code: code,
     title: title.trim(),
+    description: description ? description.trim() : '',
+    category: category ? category.trim() : 'General',
     questions,
     createdAt: new Date().toISOString(),
     userId: userId || null,
   };
-  quizzes.push(newQuiz);
+  quizzes.unshift(newQuiz);
   try {
     localStorage.setItem(key, JSON.stringify(quizzes));
   } catch (err) {
@@ -108,12 +110,19 @@ export function updateLocalQuizId(oldId, newId, userId = null) {
 }
 
 // ─── Update an existing quiz ───────────────────────────────────────────────────
-export function updateQuiz(id, title, questions, userId = null) {
+export function updateQuiz(id, title, questions, userId = null, category = 'General', description = '') {
   const key = getStorageKey(userId);
   const quizzes = getAllQuizzes(userId);
   const idx = quizzes.findIndex((q) => q.id === id || q.code === id);
   if (idx === -1) return null;
-  quizzes[idx] = { ...quizzes[idx], title: title.trim(), questions, updatedAt: new Date().toISOString() };
+  quizzes[idx] = {
+    ...quizzes[idx],
+    title: title.trim(),
+    description: description !== undefined ? description.trim() : (quizzes[idx].description || ''),
+    category: category !== undefined ? category.trim() : (quizzes[idx].category || 'General'),
+    questions,
+    updatedAt: new Date().toISOString(),
+  };
   try {
     localStorage.setItem(key, JSON.stringify(quizzes));
   } catch (err) {

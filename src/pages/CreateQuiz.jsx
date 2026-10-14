@@ -135,7 +135,7 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
 
     // If jsonText is empty and questions are also empty, notify user
     if (!jsonText.trim() && (!questions || questions.length === 0)) {
-      setError('Please enter or paste your quiz questions (JSON format) before creating.');
+      setError(editQuiz ? 'Please enter or paste your quiz questions before saving changes.' : 'Please enter or paste your quiz questions (standard format) before creating.');
       return;
     }
 
@@ -178,8 +178,8 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
     setSaving(true);
     try {
       if (editQuiz) {
-        await updateExistingQuiz(editQuiz.id, finalTitle, finalQuestions, user?.id);
-        setSuccess('Quiz updated successfully!');
+        await updateExistingQuiz(editQuiz.id, finalTitle, finalQuestions, user?.id, category, description);
+        setSuccess('Quiz updated successfully! Changes saved.');
       } else {
         await saveNewQuiz(finalTitle, finalQuestions, user?.id, category, description);
         recordQuizCreated(user?.id);
@@ -188,7 +188,7 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
 
       setTimeout(() => {
         onNavigate('list');
-      }, 900);
+      }, 350);
     } catch (err) {
       setError(err.message || 'Failed to save quiz.');
     } finally {
@@ -210,11 +210,27 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
             <span>Back to Quizzes</span>
           </button>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            {editQuiz ? 'Edit' : 'Create New'} <span className="gradient-text">Quiz</span>
+            {editQuiz ? (
+              <>Edit Your <span className="gradient-text">Quiz</span></>
+            ) : (
+              <>Create New <span className="gradient-text">Quiz</span></>
+            )}
           </h1>
           <p className="text-xs sm:text-sm text-[#8d877c] mt-1">
-            Build custom exams and assessments with questions, options, and answer keys.
+            {editQuiz
+              ? 'Update quiz questions, answers, options, and settings.'
+              : 'Build custom exams and assessments with questions, options, and answer keys.'}
           </p>
+          {editQuiz && (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-semibold mt-2.5">
+              <span>Editing: <strong>{editQuiz.title || 'Untitled Quiz'}</strong></span>
+              {(editQuiz.code || editQuiz.id) && (
+                <span className="font-mono text-[10px] text-amber-400/90 bg-amber-500/15 px-1.5 py-0.5 rounded">
+                  {editQuiz.code || editQuiz.id}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -323,10 +339,12 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
             >
               {saving ? (
                 <span className="w-3.5 h-3.5 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
+              ) : editQuiz ? (
+                <Check className="w-4 h-4 stroke-[2.5]" />
               ) : (
                 <Plus className="w-4 h-4 stroke-[2.5]" />
               )}
-              <span>Create Quiz</span>
+              <span>{editQuiz ? 'Save Changes' : 'Create Quiz'}</span>
             </button>
           </div>
         </div>
@@ -415,7 +433,9 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
           {/* Bottom Save to Library CTA */}
           <div className="pt-4 border-t border-white/[0.08] flex items-center justify-between">
             <p className="text-xs text-[#8d877c]">
-              All questions validated. Ready to save to your library.
+              {editQuiz
+                ? 'All questions validated. Ready to save changes.'
+                : 'All questions validated. Ready to save to your library.'}
             </p>
             <button
               type="button"
@@ -425,10 +445,12 @@ export default function CreateQuiz({ onNavigate, editQuiz = null, onOpenAuth }) 
             >
               {saving ? (
                 <span className="w-3.5 h-3.5 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
+              ) : editQuiz ? (
+                <Check className="w-4 h-4 stroke-[2.5]" />
               ) : (
                 <Sparkles className="w-4 h-4" />
               )}
-              <span>Save to Library</span>
+              <span>{editQuiz ? 'Save Changes' : 'Save to Library'}</span>
             </button>
           </div>
         </div>

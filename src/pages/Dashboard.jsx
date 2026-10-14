@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { fetchAllQuizzes, fetchQuizById } from '../services/quizService.js';
+import { getAllQuizzes as getLocalQuizzes } from '../utils/storage.js';
 import { useScrollReveal } from '../utils/useScrollReveal.js';
 import { useCountUp } from '../utils/useCountUp.js';
 import {
@@ -58,8 +59,21 @@ function AnimatedStat({ icon: Icon, label, value, color, delay = 0 }) {
 
 export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenAuth }) {
   const { user, isGuest, getUserDisplayName, getUserCourse } = useAuth();
-  const [quizzes, setQuizzes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [quizzes, setQuizzes] = useState(() => {
+    try {
+      return getLocalQuizzes(user?.id) || [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = getLocalQuizzes(user?.id);
+      return !cached || cached.length === 0;
+    } catch {
+      return false;
+    }
+  });
   const [headerRef, headerVisible] = useScrollReveal({ threshold: 0.01 });
 
   // Gamification Data
@@ -80,10 +94,21 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
 
   useEffect(() => {
     if (!user && !isGuest) { setQuizzes([]); setLoading(false); return; }
-    setLoading(true); setQuizzes([]);
+
+    // Instant populate from local storage first (0ms latency)
+    const local = getLocalQuizzes(user?.id) || [];
+    if (local.length > 0) {
+      setQuizzes(local);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     fetchAllQuizzes(user?.id)
       .then((data) => {
-        setQuizzes(data);
+        if (Array.isArray(data)) {
+          setQuizzes(data);
+        }
         setGamification(getGamificationData(user?.id));
         setActivityDays(getPast30DaysActivity(user?.id));
       })
@@ -96,7 +121,7 @@ export default function Dashboard({ onNavigate, onStartQuiz, onEditQuiz, onOpenA
     } catch {
       setDismissedRecentIds([]);
     }
-  }, [user, isGuest]);
+  }, [user?.id, isGuest]);
 
   const handleDismissRecent = (e, quizId) => {
     e.stopPropagation();

@@ -62,8 +62,10 @@ export async function fetchAllQuizzes(userId = null) {
   // If Supabase is available, try fetching cloud quizzes
   if (isSupabaseConfigured) {
     try {
-      // 1. Sync any local quizzes for this user that are not yet in Supabase
-      await syncLocalQuizzesToCloud(userId);
+      // Sync local quizzes in the background non-blocking so it never slows down page rendering!
+      syncLocalQuizzesToCloud(userId).catch((err) =>
+        console.warn('Background sync skipped:', err)
+      );
 
       const { data, error } = await supabase
         .from('quizzes')
@@ -74,6 +76,7 @@ export async function fetchAllQuizzes(userId = null) {
       if (!error && Array.isArray(data)) {
         const mapped = data.map((item) => ({
           id: item.id,
+          code: item.id,
           title: item.title,
           description: item.description || '',
           category: item.category || 'General',
@@ -135,7 +138,8 @@ export async function regenerateQuizCode(oldId, userId = null) {
 
 // ─── Save New Quiz (Local + Cloud) ──────────────────────────────────────────
 export async function saveNewQuiz(title, questions, userId = null, category = 'General', description = '') {
-  const localQuiz = saveLocalQuiz(title, questions, userId);
+  // 1. Persist locally immediately (0ms instant response)
+  const localQuiz = saveLocalQuiz(title, questions, userId, category, description);
 
   if (!isSupabaseConfigured || !userId) {
     return localQuiz;
@@ -146,26 +150,35 @@ export async function saveNewQuiz(title, questions, userId = null, category = 'G
       id: localQuiz.id,
       user_id: userId,
       title: title.trim(),
-      description: description.trim(),
-      category: category.trim(),
+      description: (description || '').trim(),
+      category: (category || 'General').trim(),
       questions: questions,
       created_at: localQuiz.createdAt,
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase
+    // Fast-insert with safety timeout so cloud latency never blocks user interaction
+    const cloudPromise = supabase
       .from('quizzes')
       .insert([payload])
       .select()
       .single();
 
-    if (!error) {
+    const timeoutPromise = new Promise((resolve) =>
+      setTimeout(() => resolve({ timeout: true }), 3000)
+    );
+
+    const result = await Promise.race([cloudPromise, timeoutPromise]);
+
+    if (result && !result.timeout && !result.error) {
       return {
         ...localQuiz,
         isCloud: true,
       };
-    } else {
-      console.warn('Supabase cloud quiz insert error:', error.message || error);
+    } else if (result?.timeout) {
+      console.warn('Cloud quiz insert queued, local copy saved instantly.');
+    } else if (result?.error) {
+      console.warn('Supabase cloud quiz insert error:', result.error.message || result.error);
     }
   } catch (err) {
     console.warn('Cloud insert skipped:', err);
@@ -175,22 +188,33 @@ export async function saveNewQuiz(title, questions, userId = null, category = 'G
 }
 
 // ─── Update Existing Quiz ──────────────────────────────────────────────────
-export async function updateExistingQuiz(id, title, questions, userId = null) {
-  const localQuiz = updateLocalQuiz(id, title, questions, userId);
+export async function updateExistingQuiz(id, title, questions, userId = null, category = 'General', description = '') {
+  // 1. Update local storage immediately (0ms instant response)
+  const localQuiz = updateLocalQuiz(id, title, questions, userId, category, description);
 
   if (!isSupabaseConfigured || !userId) {
     return localQuiz;
   }
 
   try {
-    await supabase
+    const updatePayload = {
+      title: title.trim(),
+      questions: questions,
+      updated_at: new Date().toISOString(),
+    };
+    if (description !== undefined) updatePayload.description = description.trim();
+    if (category !== undefined) updatePayload.category = category.trim();
+
+    const cloudPromise = supabase
       .from('quizzes')
-      .update({
-        title: title.trim(),
-        questions: questions,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', id);
+
+    const timeoutPromise = new Promise((resolve) =>
+      setTimeout(() => resolve({ timeout: true }), 3000)
+    );
+
+    await Promise.race([cloudPromise, timeoutPromise]);
   } catch (err) {
     console.warn('Cloud update skipped:', err);
   }

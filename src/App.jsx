@@ -51,7 +51,7 @@ function AppContent() {
       '/': 'QuizCraft',
       '/dashboard': 'Dashboard — QuizCraft',
       '/my-quizzes': 'My Quizzes — QuizCraft',
-      '/create-quiz': 'Create Quiz — QuizCraft',
+      '/create-quiz': editingQuiz ? 'Edit Your Quiz — QuizCraft' : 'Create Quiz — QuizCraft',
       '/profile': 'Profile — QuizCraft',
       '/results': 'Results — QuizCraft',
       '/play': 'Practice — QuizCraft',
@@ -59,7 +59,7 @@ function AppContent() {
       '/login': 'Sign In — QuizCraft',
     };
     document.title = titles[currentPath] || 'QuizCraft';
-  }, [currentPath]);
+  }, [currentPath, editingQuiz]);
 
   const navigate = useCallback((target, options = {}) => {
     let path = target;

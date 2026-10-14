@@ -7,11 +7,25 @@ import StatCard from '../components/ui/StatCard.jsx';
 import QuizCard from '../components/ui/QuizCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { fetchAllQuizzes, deleteQuizRecord, updateExistingQuiz, regenerateQuizCode } from '../services/quizService.js';
+import { getAllQuizzes as getLocalQuizzes } from '../utils/storage.js';
 
 export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAuth }) {
   const { user, isGuest } = useAuth();
-  const [quizzes, setQuizzes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [quizzes, setQuizzes] = useState(() => {
+    try {
+      return getLocalQuizzes(user?.id) || [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = getLocalQuizzes(user?.id);
+      return !cached || cached.length === 0;
+    } catch {
+      return false;
+    }
+  });
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('latest');
   const [deleteModal, setDeleteModal] = useState(null);
@@ -36,11 +50,21 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
       setLoading(false);
       return;
     }
-    setLoading(true);
-    setQuizzes([]);
+
+    // Instant sync from local storage first (0ms latency, newly saved quiz immediately appears!)
+    const local = getLocalQuizzes(user?.id) || [];
+    if (local.length > 0) {
+      setQuizzes(local);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     try {
       const data = await fetchAllQuizzes(user?.id);
-      setQuizzes(data);
+      if (Array.isArray(data)) {
+        setQuizzes(data);
+      }
     } catch (err) {
       console.error('Error fetching quizzes:', err);
     } finally {
@@ -50,7 +74,7 @@ export default function QuizList({ onNavigate, onStartQuiz, onEditQuiz, onOpenAu
 
   useEffect(() => {
     loadQuizzes();
-  }, [user, isGuest]);
+  }, [user?.id, isGuest]);
 
   // Calculations for Stats Bar
   const totalQuizzesCount = quizzes.length;
